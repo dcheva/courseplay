@@ -82,6 +82,8 @@ function TriggerHandler:onDriveNow()
 
 end
 
+
+
 function TriggerHandler:changeLoadingState(newState)
 	if newState ~= self.loadingState then 
 		self.loadingState = newState
@@ -324,15 +326,6 @@ function TriggerHandler:activateUnloadingTriggerWhenAvailable(object)
 				--	CpManager:setGlobalInfoText(rootVehicle, 'WRONG_FILLTYPE_FOR_TRIGGER');
 				end
 				if spec.currentDischargeState == Dischargeable.DISCHARGE_STATE_OFF then
-					if not spec:getCanDischargeToObject(currentDischargeNode) then
-						for i=1,#spec.dischargeNodes do
-							if spec:getCanDischargeToObject(spec.dischargeNodes[i])then
-								spec:setCurrentDischargeNodeIndex(spec.dischargeNodes[i]);
-								currentDischargeNode = spec:getCurrentDischargeNode()
-								break
-							end
-						end
-					end
 					if spec:getCanDischargeToObject(currentDischargeNode) then
 						if not object:getFillUnitFillType(currentDischargeNode.fillUnitIndex) or self:isDriveNowActivated() then 
 							return
@@ -340,6 +333,25 @@ function TriggerHandler:activateUnloadingTriggerWhenAvailable(object)
 						if spec.setDischargeState then
 							spec:setDischargeState(Dischargeable.DISCHARGE_STATE_OBJECT)				
 							self:setUnloadingState(object,currentDischargeNode.fillUnitIndex,spec:getDischargeFillType(currentDischargeNode))
+						end
+					else 
+						if #spec.fillUnitDischargeNodeMapping>1 and not currentDischargeNode.dischargeObject then 
+							for fillUnitIndex,dischargeNode in pairs(spec.fillUnitDischargeNodeMapping) do 
+								if not spec:getCanDischargeToObject(currentDischargeNode) and dischargeNode~=currentDischargeNode then 
+									for dischargeNodeIndex,curDischargeNode in pairs(spec.dischargeNodes) do 
+										if curDischargeNode == dischargeNode then 
+											local trailerSpec = object.spec_trailer
+											if trailerSpec and object:getCanTogglePreferdTipSide() then
+												for tipSideIndex,tipside in pairs(trailerSpec.tipSides) do 
+													if tipside.dischargeNodeIndex == dischargeNodeIndex then 
+														object:setPreferedTipSide(tipSideIndex)
+													end
+												end											
+											end
+										end
+									end
+								end							
+							end
 						end
 					end
 				end

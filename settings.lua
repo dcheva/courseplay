@@ -3225,8 +3225,8 @@ function SeperateFillTypeLoadingSetting:init(vehicle)
 		},
 		{ 	
 			'COURSEPLAY_DEACTIVATED',
-			string.format("%s %d",'COURSEPLAY_LOADING_SEPERATE_FILLTYPES_TRAILERS',2),
-			string.format("%s %d",'COURSEPLAY_LOADING_SEPERATE_FILLTYPES_TRAILERS',3)
+			'COURSEPLAY_LOADING_SEPERATE_FILLTYPES_TRAILERS'..2,
+			'COURSEPLAY_LOADING_SEPERATE_FILLTYPES_TRAILERS'..3
 		}
 		)
 	self:set(1)
@@ -3464,7 +3464,7 @@ function AssignedCombinesSetting:changeListOffset(x,noEventSend)
 		self.offsetHead = self.offsetHead-1
 	end
 	if not noEventSend then 
-		AssignedCombinesEvents:sendEvent(self.vehicle,self.NetworkTypes.CHANGE_OFFSET,index)
+		AssignedCombinesEvents:sendEvent(self.vehicle,self.NetworkTypes.CHANGE_OFFSET,x)
 	end
 	self.vehicle.cp.driver:refreshHUD()
 end
@@ -3508,24 +3508,33 @@ end
 ShowVisualWaypointsSetting = CpObject(SettingList)
 ShowVisualWaypointsSetting.DEACTIVED = 0
 ShowVisualWaypointsSetting.START_STOP = 1
-ShowVisualWaypointsSetting.START_STOP_AND_CROSSING = 2
 ShowVisualWaypointsSetting.ALL = 3
 function ShowVisualWaypointsSetting:init(vehicle)
 	SettingList.init(self, 'showVisualWaypoints', 'COURSEPLAY_WAYPOINT_MODE', 'COURSEPLAY_WAYPOINT_MODE', vehicle,
 		{ 
 			ShowVisualWaypointsSetting.DEACTIVED,
 			ShowVisualWaypointsSetting.START_STOP,
-			ShowVisualWaypointsSetting.START_STOP_AND_CROSSING,
 			ShowVisualWaypointsSetting.ALL 
 		}
 		)
-	self:set(2)
+	self:set(1)
 end
 
 function ShowVisualWaypointsSetting:onChange()
 	courseplay.signs:setSignsVisibility(self.vehicle)
 end
---courseplay.signs:setSignsVisibility(self);
+
+---@class ShowVisualWaypointsCrossPointSetting : BooleanSetting
+ShowVisualWaypointsCrossPointSetting = CpObject(BooleanSetting)
+function ShowVisualWaypointsCrossPointSetting:init(vehicle)
+	BooleanSetting.init(self, 'showVisualWaypointsCrossPoint','-', '-', vehicle) 
+	self:set(false)
+end
+function ShowVisualWaypointsCrossPointSetting:onChange()
+	courseplay.signs:setSignsVisibility(self.vehicle)
+end
+
+
 --- Container for settings
 --- @class SettingsContainer
 SettingsContainer = CpObject()

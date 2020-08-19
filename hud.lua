@@ -1274,11 +1274,11 @@ function courseplay.hud:updatePageContent(vehicle, page)
 		
 		self:showShowWaypointsButtons(vehicle, true)
 		local showVisualWaypointsState = vehicle.cp.settings.showVisualWaypoints:get()
-		
+		local showVisualCrossingPoint = vehicle.cp.settings.showVisualWaypointsCrossPoint:get()
 		vehicle.cp.hud.visualWaypointsStartButton:setActive(showVisualWaypointsState>=ShowVisualWaypointsSetting.START_STOP);
 		vehicle.cp.hud.visualWaypointsEndButton:setActive(showVisualWaypointsState>=ShowVisualWaypointsSetting.START_STOP)
 		vehicle.cp.hud.visualWaypointsAllButton:setActive(showVisualWaypointsState>=ShowVisualWaypointsSetting.ALL)
-		vehicle.cp.hud.visualWaypointsCrossingButton:setActive(showVisualWaypointsState>=ShowVisualWaypointsSetting.START_STOP_AND_CROSSING)
+		vehicle.cp.hud.visualWaypointsCrossingButton:setActive(showVisualCrossingPoint)
 
 		
 		-- Debug channels
@@ -1874,12 +1874,11 @@ function courseplay.hud:setupShowWaypointsButtons(vehicle,page,line)
 	local btnW = self.buttonSize.small.w * 2 + self.buttonSize.small.w/8;
 	local hSmall = self.buttonSize.small.h;
 	local wSmall = self.buttonSize.small.w;
-	--addRowButton(vehicle,setting,funct, hudPage, line, column )
-	self:addRowButton(vehicle,vehicle.cp.settings.showVisualWaypoints,'next', page, line, 2)
+	courseplay.button:new(vehicle, page, nil, "changeByX", line, self.col2posX[page], self.linesPosY[line],btnW * 4.5 , self.lineHeight, line, nil, true):setSetting(vehicle.cp.settings.showVisualWaypoints);
 	vehicle.cp.hud.visualWaypointsStartButton = courseplay.button:new(vehicle, page, { 'iconSprite.png', 'waypointSignsStart' }, nil, nil, self.col2posX[page], self.linesButtonPosY[line], btnW, hSmall);
 	vehicle.cp.hud.visualWaypointsAllButton = courseplay.button:new(vehicle, page, { 'iconSprite.png', 'waypointSignsAll' }, nil, nil, self.col2posX[page] + btnW * 1.5, self.linesButtonPosY[line], btnW, hSmall);
 	vehicle.cp.hud.visualWaypointsEndButton = courseplay.button:new(vehicle, page, { 'iconSprite.png', 'waypointSignsEnd' }, nil, nil, self.col2posX[page] + btnW * 3, self.linesButtonPosY[line], btnW, hSmall);
-	vehicle.cp.hud.visualWaypointsCrossingButton = courseplay.button:new(vehicle, page, { 'iconSprite.png', 'recordingCross' }, nil, nil, self.col2posX[page] + btnW * 4.5, self.linesButtonPosY[line], wSmall, hSmall);
+	vehicle.cp.hud.visualWaypointsCrossingButton = courseplay.button:new(vehicle, page, { 'iconSprite.png', 'recordingCross' }, "toggle", nil, self.col2posX[page] + btnW * 4.5, self.linesButtonPosY[line], wSmall, hSmall, line, nil, true):setSetting(vehicle.cp.settings.showVisualWaypointsCrossPoint)
 	vehicle.cp.hud.visualWaypointsStartButton:setShow(false)
 	vehicle.cp.hud.visualWaypointsAllButton:setShow(false)
 	vehicle.cp.hud.visualWaypointsEndButton:setShow(false)

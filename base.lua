@@ -574,6 +574,7 @@ function courseplay:onLoad(savegame)
 	self.cp.settings:addSetting(StreetSpeedSetting,self)
 	self.cp.settings:addSetting(BunkerSpeedSetting,self)
 	self.cp.settings:addSetting(ShowVisualWaypointsSetting,self)
+	self.cp.settings:addSetting(ShowVisualWaypointsCrossPointSetting,self)
 	---@type SettingsContainer
 	self.cp.courseGeneratorSettings = SettingsContainer("courseGeneratorSettings")
 	self.cp.courseGeneratorSettings:addSetting(CenterModeSetting, self)

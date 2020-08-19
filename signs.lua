@@ -317,7 +317,7 @@ function courseplay.signs:setSignsVisibility(vehicle, forceHide)
 	end;
 
 	for _,signData in pairs(vehicle.cp.signs.crossing) do
-		local vis = showVisualWaypointsState>=ShowVisualWaypointsSetting.START_STOP_AND_CROSSING
+		local vis = vehicle.cp.settings.showVisualWaypointsCrossPoint:get()
 		if forceHide or not vehicle:getIsEntered() then
 			vis = false;
 		end;
