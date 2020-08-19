@@ -480,8 +480,9 @@
 		<text name="COURSEPLAY_ALLOW_UNLOAD_ON_FIRST_HEADLAND"				text="Entlade Drescher im ersten Vorgewende" />
 		<text name="COURSEPLAY_ALLOW_UNLOAD_ON_FIRST_HEADLAND_TOOLTIP"		text="Fahrenden Drescher im ersten Vorgewende entladen, Abfahrer fährt außerhalb des Feldes." />
 		<text name="COURSEPLAY_RUNCOUNTER_ERROR_FOR_TRIGGER"                text="letzter Durchlauf = 0" />
-        <text name="COURSEPLAY_LOADING_SEPERATE_FILLTYPES"                  text="Gleiches Ladegut" />
-        <text name="COURSEPLAY_LOADING_SEPERATE_FILLTYPES_TRAILERS"         text="Ladegut pro Trailer:" />
+        <text name="COURSEPLAY_LOADING_SEPERATE_FILLTYPES"                  text="verschiedene Ladegüter" />
+        <text name="COURSEPLAY_LOADING_SEPERATE_FILLTYPES_TRAILERS"         text="verschiedene Trailer: " />
+		<text name="COURSEPLAY_UNLOADING_AMOUNT"							text="Menge entladen" />
 		<!-- Replace marker, do not remove! -->
 </texts>
 </l10n>
