@@ -131,7 +131,6 @@ function courseplay:onLoad(savegame)
 	self.cp.canSwitchMode = false;
 	self.cp.tipperLoadMode = 0;
 	self.cp.easyFillTypeList = {};
-	self.cp.siloSelectedFillType = FillType.UNKNOWN;
 	self.cp.siloSelectedEasyFillType = 1;
 	self.cp.slippingStage = 0;
 	self.cp.isTipping = false;
@@ -428,7 +427,6 @@ function courseplay:onLoad(savegame)
 	self.cp.returnToFirstPoint = false;
 	self.cp.hasGeneratedCourse = false;
 	self.cp.hasValidCourseGenerationData = false;
-	self.cp.ridgeMarkersAutomatic = true;
 	-- TODO: add all old course gen settings to a SettingsContainer
 	self.cp.oldCourseGeneratorSettings = {
 		startingLocation = self.cp.startingCorner,
@@ -749,7 +747,8 @@ function courseplay:onDraw()
 										
 	if self:getIsActive() and self:getIsEntered() then
 		local modifierPressed = courseplay.inputModifierIsPressed;
-		if (self.cp.canDrive or not self.cp.hud.openWithMouse) and not modifierPressed then
+		--missing hud.openWithMouse ?
+		if self.cp.canDrive and not modifierPressed then
 			g_currentMission:addHelpButtonText(courseplay:loc('COURSEPLAY_FUNCTIONS'), InputBinding.COURSEPLAY_MODIFIER, nil, GS_PRIO_HIGH);
 		end;
 
@@ -760,19 +759,12 @@ function courseplay:onDraw()
 				g_currentMission:addHelpTextFunction(CpManager.drawMouseButtonHelp, self, CpManager.hudHelpMouseLineHeight, courseplay:loc('COURSEPLAY_MOUSEARROW_SHOW'));
 			end;
 		end;]]
-
-		if self.cp.hud.openWithMouse then
+		if modifierPressed then
 			if not self.cp.hud.show then
-				--g_currentMission:addHelpTextFunction(CpManager.drawMouseButtonHelp, self, CpManager.hudHelpMouseLineHeight, courseplay:loc('COURSEPLAY_HUD_OPEN'));
-			end;
-		else
-			if modifierPressed then
-				if not self.cp.hud.show then
-					--g_gui.inputManager:setActionEventTextVisibility(courseplay.inputActionEventIds['COURSEPLAY_HUD'], true)
-					g_currentMission:addHelpButtonText(courseplay:loc('COURSEPLAY_HUD_OPEN'), InputBinding.COURSEPLAY_HUD, nil, GS_PRIO_HIGH);
-				else
-					g_currentMission:addHelpButtonText(courseplay:loc('COURSEPLAY_HUD_CLOSE'), InputBinding.COURSEPLAY_HUD, nil, GS_PRIO_HIGH);
-				end;
+				--g_gui.inputManager:setActionEventTextVisibility(courseplay.inputActionEventIds['COURSEPLAY_HUD'], true)
+				g_currentMission:addHelpButtonText(courseplay:loc('COURSEPLAY_HUD_OPEN'), InputBinding.COURSEPLAY_HUD, nil, GS_PRIO_HIGH);
+			else
+				g_currentMission:addHelpButtonText(courseplay:loc('COURSEPLAY_HUD_CLOSE'), InputBinding.COURSEPLAY_HUD, nil, GS_PRIO_HIGH);
 			end;
 		end;
 
@@ -1004,11 +996,7 @@ function courseplay:onUpdate(dt)
 	--reset selected field num, when field doesn't exist anymone (contracts)
 	if courseplay.fields.fieldData[self.cp.fieldEdge.selectedField.fieldNum] == nil then
 		self.cp.fieldEdge.selectedField.fieldNum = 0;
-	end
-	if courseplay.fields.fieldData[self.cp.searchCombineOnField] == nil then
-		self.cp.searchCombineOnField = 0;
-	end
-	
+	end	
 	
 	-- MODE 9: move shovel to positions (manually)
 	if (self.cp.mode == courseplay.MODE_SHOVEL_FILL_AND_EMPTY or self.cp.shovelPositionFromKey) and self.cp.manualShovelPositionOrder ~= nil and self.cp.movingToolsPrimary then
@@ -1421,19 +1409,12 @@ function courseplay:loadVehicleCPSettings(xmlFile, key, resetVehicles)
 		local curKey = key .. '.courseplay.basics';
 		courseplay:setCpMode(self,  Utils.getNoNil(   getXMLInt(xmlFile, curKey .. '#aiMode'), self.cp.mode));
 		self.cp.waitTime 		  = Utils.getNoNil(   getXMLInt(xmlFile, curKey .. '#waitTime'),		 0);
- 		self.cp.driver.runCounter  	= Utils.getNoNil(  getXMLInt(xmlFile, curKey .. '#runCounter'),	 		 0);
 		local courses 			  = Utils.getNoNil(getXMLString(xmlFile, curKey .. '#courses'),			 '');
 		self.cp.loadedCourses = StringUtil.splitString(",", courses);
 		courseplay:reloadCourses(self, true);
 
-		
-		self.cp.siloSelectedFillType = Utils.getNoNil(getXMLInt(xmlFile, curKey .. '#siloSelectedFillType'), FillType.UNKNOWN);
-		if self.cp.siloSelectedFillType == nil then self.cp.siloSelectedFillType = FillType.UNKNOWN end 
-
 		--HUD
 		curKey = key .. '.courseplay.HUD';
-		self.cp.hud.openWithMouse = Utils.getNoNil(  getXMLBool(xmlFile, curKey .. '#openHudWithMouse'), true);
-		self.cp.hud.showMiniHud = Utils.getNoNil(  getXMLBool(xmlFile, curKey .. '#showMiniHud'), true);
 		self.cp.hud.show = Utils.getNoNil(  getXMLBool(xmlFile, curKey .. '#showHud'), false);
 		
 		-- MODE 2
@@ -1441,7 +1422,6 @@ function courseplay:loadVehicleCPSettings(xmlFile, key, resetVehicles)
 		self.cp.tipperOffset 		  = Utils.getNoNil(getXMLFloat(xmlFile, curKey .. '#tipperOffset'),			 0);
 		self.cp.combineOffset 		  = Utils.getNoNil(getXMLFloat(xmlFile, curKey .. '#combineOffset'),		 0);
 		self.cp.combineOffsetAutoMode = Utils.getNoNil( getXMLBool(xmlFile, curKey .. '#combineOffsetAutoMode'), true);
-		self.cp.searchCombineOnField  = Utils.getNoNil(  getXMLInt(xmlFile, curKey .. '#searchCombineOnField'),	 0);
 		
 		curKey = key .. '.courseplay.driving';
 		self.cp.turnDiameter		  = Utils.getNoNil(  getXMLInt(xmlFile, curKey .. '#turnDiameter'),			 self.cp.vehicleTurnRadius * 2);
@@ -1453,7 +1433,6 @@ function courseplay:loadVehicleCPSettings(xmlFile, key, resetVehicles)
 		curKey = key .. '.courseplay.fieldWork';
 		self.cp.oppositeTurnMode					= Utils.getNoNil( getXMLBool(xmlFile, curKey .. '#oppositeTurnMode'),		false);
 		self.cp.workWidth 							= Utils.getNoNil(getXMLFloat(xmlFile, curKey .. '#workWidth'),				3);
-		self.cp.ridgeMarkersAutomatic				= Utils.getNoNil( getXMLBool(xmlFile, curKey .. '#ridgeMarkersAutomatic'),	true);
 		self.cp.abortWork							= Utils.getNoNil(  getXMLInt(xmlFile, curKey .. '#abortWork'),				0);
 		self.cp.manualWorkWidth						= Utils.getNoNil(getXMLFloat(xmlFile, curKey .. '#manualWorkWidth'),		0);
 		self.cp.lastValidTipDistance				= Utils.getNoNil(getXMLFloat(xmlFile, curKey .. '#lastValidTipDistance'),	0);
@@ -1567,7 +1546,6 @@ function courseplay:saveToXMLFile(xmlFile, key, usedModNames)
 	newKey = newKey..'.courseplay'
 
 	
-	local runCounter = self.cp.driver and self.cp.driver.runCounter or 0
 	--CP basics
 	setXMLInt(xmlFile, newKey..".basics #aiMode", self.cp.mode)
 	if #self.cp.loadedCourses == 0 and self.cp.currentCourseId ~= 0 then
@@ -1578,12 +1556,8 @@ function courseplay:saveToXMLFile(xmlFile, key, usedModNames)
 		setXMLString(xmlFile, newKey..".basics #courses", tostring(table.concat(self.cp.loadedCourses, ",")))
 	end
 	setXMLInt(xmlFile, newKey..".basics #waitTime", self.cp.waitTime)
-	setXMLInt(xmlFile, newKey..".basics #siloSelectedFillType", self.cp.siloSelectedFillType or FillType.UNKNOWN)
-	setXMLInt(xmlFile, newKey..".basics #runCounter", runCounter)
 
 	--HUD
-	setXMLBool(xmlFile, newKey..".HUD #openHudWithMouse", self.cp.hud.openWithMouse)
-	setXMLBool(xmlFile, newKey..".HUD #showMiniHud", self.cp.hud.showMiniHud)
 	setXMLBool(xmlFile, newKey..".HUD #showHud", self.cp.hud.show)
 	
 
@@ -1592,7 +1566,6 @@ function courseplay:saveToXMLFile(xmlFile, key, usedModNames)
 	setXMLString(xmlFile, newKey..".combi #tipperOffset", string.format("%.1f",self.cp.tipperOffset))
 	setXMLString(xmlFile, newKey..".combi #combineOffset", string.format("%.1f",self.cp.combineOffset))
 	setXMLString(xmlFile, newKey..".combi #combineOffsetAutoMode", tostring(self.cp.combineOffsetAutoMode))
-	setXMLInt(xmlFile, newKey..".combi #searchCombineOnField", self.cp.searchCombineOnField)
 	
 	--driving settings
 	setXMLInt(xmlFile, newKey..".driving #turnDiameter", self.cp.turnDiameter)
@@ -1602,7 +1575,6 @@ function courseplay:saveToXMLFile(xmlFile, key, usedModNames)
 	--field work settings
 	local offsetData = string.format('%.1f;%.1f;%.1f;%s;%.1f;%.1f;%d', self.cp.laneOffset, self.cp.toolOffsetX, self.cp.toolOffsetZ, 0, self.cp.loadUnloadOffsetX, self.cp.loadUnloadOffsetZ, self.cp.laneNumber);
 	setXMLString(xmlFile, newKey..".fieldWork #workWidth", string.format("%.1f",self.cp.workWidth))
-	setXMLBool(xmlFile, newKey..".fieldWork #ridgeMarkersAutomatic", self.cp.ridgeMarkersAutomatic)
 	setXMLString(xmlFile, newKey..".fieldWork #offsetData", offsetData)
 	setXMLInt(xmlFile, newKey..".fieldWork #abortWork", Utils.getNoNil(self.cp.abortWork, 0))
 	setXMLBool(xmlFile, newKey..".fieldWork #oppositeTurnMode", self.cp.oppositeTurnMode)

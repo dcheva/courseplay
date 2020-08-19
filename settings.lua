@@ -115,11 +115,6 @@ function courseplay:forceGoToUnloadCourse(vehicle)
 	vehicle.cp.driver:stopAndChangeToUnload()
 end
 
-
-function courseplay:toggleShowMiniHud(vehicle)
-	vehicle.cp.hud.showMiniHud = not vehicle.cp.hud.showMiniHud
-end
-
 function courseplay:toggleConvoyActive(vehicle)
 	vehicle.cp.convoyActive =  not vehicle.cp.convoyActive
 	--self:setCpVar('convoyActive', self.cp.convoyActive, courseplay.isClient);
@@ -446,29 +441,12 @@ function courseplay:toggleAlignmentWaypoint( vehicle )
 	vehicle.cp.alignment.enabled = not vehicle.cp.alignment.enabled
 end
 
+--Do we want to use this one again ?
 function courseplay:toggleSearchCombineMode(vehicle)
 	vehicle.cp.searchCombineAutomatically = not vehicle.cp.searchCombineAutomatically;
 	if not vehicle.cp.searchCombineAutomatically then
-		courseplay:setSearchCombineOnField(vehicle, nil, 0);
-	end;
-end;
-
-function courseplay:setSearchCombineOnField(vehicle, changeDir, force)
-	if courseplay.fields.numAvailableFields == 0 or not vehicle.cp.searchCombineAutomatically then
 		vehicle.cp.settings.searchCombineOnField:set(0)
-		return
-	end
-	if force and courseplay.fields.fieldData[force] then
-		vehicle.cp.settings.searchCombineOnField:set(force)
-		return
-	end
-
-	if changeDir > 0 then
-		vehicle.cp.settings.searchCombineOnField:setNext()
-	else
-		vehicle.cp.settings.searchCombineOnField:setPrevious()
-	end
-
+	end;
 end;
 
 function courseplay:selectAssignedCombine(vehicle, changeBy)
@@ -2428,6 +2406,14 @@ function SearchCombineOnFieldSetting:refresh()
 	FieldNumberSetting.refresh(self)
 	self:addNoneSelected()
 	self.current = math.min(current, #self.values)
+end
+
+function SearchCombineOnFieldSetting:changeByX(x)
+	if courseplay.fields.numAvailableFields == 0 or not vehicle.cp.searchCombineAutomatically then
+		self:set(0)
+		return
+	end
+	return FieldNumberSetting.changeByX(self,x)
 end
 
 --- SelectedCombineToUnload on field

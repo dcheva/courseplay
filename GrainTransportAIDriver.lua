@@ -36,7 +36,6 @@ function GrainTransportAIDriver:start(startingPoint)
 	self.vehicle:setCruiseControlMaxSpeed(self.vehicle:getSpeedLimit() or math.huge)
 	AIDriver.start(self, startingPoint)
 	self:setDriveUnloadNow(false);
-	self.vehicle.cp.siloSelectedFillType = FillType.UNKNOWN
 end
 
 function GrainTransportAIDriver:isAlignmentCourseNeeded(ix)

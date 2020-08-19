@@ -1137,15 +1137,15 @@ function courseplay.hud:updatePageContent(vehicle, page)
 						self:disableButtonWithFunction(vehicle,page, 'selectAssignedCombine')					
 					end;
 				]]
-				elseif entry.functionToCall == 'setSearchCombineOnField' then 
+				elseif entry.functionToCall == 'searchCombineOnField:changeByX' then 
 					--SearchCombineOnFieldSetting
 					--Line 3: choose field for automatic search --only if automatic
 					if vehicle.cp.searchCombineAutomatically and courseplay.fields.numAvailableFields > 0 then
 						vehicle.cp.settings.searchCombineOnField:refresh()
-						self:enableButtonWithFunction(vehicle,page, 'setSearchCombineOnField')
+						self:enableButtonWithFunction(vehicle,page, 'searchCombineOnField:changeByX')
 						vehicle.cp.hud.content.pages[page][line][1].text = vehicle.cp.settings.searchCombineOnField:getLabel():format(vehicle.cp.settings.searchCombineOnField:getText())
 					else
-						self:disableButtonWithFunction(vehicle,page, 'setSearchCombineOnField')
+						self:disableButtonWithFunction(vehicle,page, 'searchCombineOnField:changeByX')
 					end;
 					self:updateCombinesList(vehicle,page)
 
@@ -1519,7 +1519,6 @@ function courseplay.hud:setupVehicleHud(vehicle)
 		suc				  = Overlay:new(gfxPath, self.suc.x1,	  self.suc.y1,	 self.suc.width, self.suc.height);
 		currentPage = 1;
 		show = false;
-		openWithMouse = true;
 		showMiniHud = true;
 		firstTimeSetContent = true;
 		content = {
@@ -1818,7 +1817,7 @@ function courseplay.hud:setupCombinesListPageButtons(vehicle,page,assignedCombin
 		};
 		vehicle.cp.hud.combinesListMouseArea= courseplay.button:new(vehicle, page, nil, 'changeListOffset', -1, combinesListMouseWheelArea.x, combinesListMouseWheelArea.y, combinesListMouseWheelArea.width, combinesListMouseWheelArea.height, nil, -self.numLines, false, true):setSetting(assignedCombinesSetting);
 	else
-		print("setup: vehicle.cp.driver.assignedCombinesSetting not found!")
+		courseplay.infoVehicle(vehicle, "setupCombinesListPageButtons failed, assignedCombinesSetting not found!")
 	end
 end
 
@@ -2003,7 +2002,7 @@ function courseplay.hud:updateCombinesList(vehicle,page)
 			line = line +1
 		end
 	else 
-		print("update: vehicle.cp.driver.assignedCombinesSetting not found!!")
+		courseplay.infoVehicle(vehicle, "updateCombinesList failed, assignedCombinesSetting not found!")
 	end
 end
 
@@ -2432,7 +2431,7 @@ function courseplay.hud:setCombineUnloadAIDriverContent(vehicle,assignedCombines
 	self:setupCombinesListPageButtons(vehicle, 4,assignedCombinesSetting)
 	--self:addRowButton(vehicle,'toggleSearchCombineMode', 4, 1, 1 )
 	--self:addSettingsRowWithArrows(vehicle,'selectAssignedCombine', 4, 2, 1 )
-	self:addSettingsRowWithArrows(vehicle,nil,'setSearchCombineOnField', 4, 2, 1 )
+	self:addSettingsRowWithArrows(vehicle,vehicle.cp.settings.searchCombineOnField,'changeByX', 4, 2, 1 )
 	self:addRowButton(vehicle,nil,'showCombineName', 4, 1, 1 )
 	--self:addRowButton(vehicle,'removeActiveCombineFromTractor', 4, 5, 1 )
 	
