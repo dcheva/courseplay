@@ -1168,6 +1168,9 @@ function courseplay.hud:updatePageContent(vehicle, page)
 				elseif entry.functionToCall == 'refillUntilPct:changeByX' then
 					vehicle.cp.hud.content.pages[page][line][1].text = vehicle.cp.settings.refillUntilPct:getLabel() 
 					vehicle.cp.hud.content.pages[page][line][2].text = vehicle.cp.settings.refillUntilPct:getText()
+				elseif entry.functionToCall == 'seperateFillTypeLoading:changeByX' then					
+					vehicle.cp.hud.content.pages[page][line][1].text = vehicle.cp.settings.seperateFillTypeLoading:getLabel() 
+					vehicle.cp.hud.content.pages[page][line][2].text = vehicle.cp.settings.seperateFillTypeLoading:getText()						
 				elseif entry.functionToCall == 'automaticUnloadingOnField:toggle' then
 					--not used right now!
 					--AutomaticUnloadingOnFieldSetting 
@@ -1267,13 +1270,15 @@ function courseplay.hud:updatePageContent(vehicle, page)
 	end
 	
 	if page == self.PAGE_GENERAL_SETTINGS then
-		vehicle.cp.hud.content.pages[6][3][1].text = courseplay:loc('COURSEPLAY_WAYPOINT_MODE');
+		vehicle.cp.hud.content.pages[6][3][1].text = vehicle.cp.settings.showVisualWaypoints:getLabel()
 		
 		self:showShowWaypointsButtons(vehicle, true)
-		vehicle.cp.hud.visualWaypointsStartButton:setActive(vehicle.cp.visualWaypointsStartEnd);
-		vehicle.cp.hud.visualWaypointsAllButton:setActive(vehicle.cp.visualWaypointsAll)
-		vehicle.cp.hud.visualWaypointsEndButton:setActive(vehicle.cp.visualWaypointsStartEnd)
-		vehicle.cp.hud.visualWaypointsCrossingButton:setActive(vehicle.cp.visualWaypointsCrossing)
+		local showVisualWaypointsState = vehicle.cp.settings.showVisualWaypoints:get()
+		
+		vehicle.cp.hud.visualWaypointsStartButton:setActive(showVisualWaypointsState>=ShowVisualWaypointsSetting.START_STOP);
+		vehicle.cp.hud.visualWaypointsEndButton:setActive(showVisualWaypointsState>=ShowVisualWaypointsSetting.START_STOP)
+		vehicle.cp.hud.visualWaypointsAllButton:setActive(showVisualWaypointsState>=ShowVisualWaypointsSetting.ALL)
+		vehicle.cp.hud.visualWaypointsCrossingButton:setActive(showVisualWaypointsState>=ShowVisualWaypointsSetting.START_STOP_AND_CROSSING)
 
 		
 		-- Debug channels
@@ -1811,7 +1816,7 @@ function courseplay.hud:setupCombinesListPageButtons(vehicle,page,assignedCombin
 			width = self.buttonCoursesPosX[4] - self.contentMinX,
 			height = self.linesPosY[3] + self.lineHeight - self.linesPosY[self.numLines]
 		};
-		vehicle.cp.hud.combinesListMouseArea= courseplay.button:new(vehicle, 'global', nil, 'changeListOffset', -1, combinesListMouseWheelArea.x, combinesListMouseWheelArea.y, combinesListMouseWheelArea.width, combinesListMouseWheelArea.height, nil, -self.numLines, true, true):setSetting(assignedCombinesSetting);
+		vehicle.cp.hud.combinesListMouseArea= courseplay.button:new(vehicle, page, nil, 'changeListOffset', -1, combinesListMouseWheelArea.x, combinesListMouseWheelArea.y, combinesListMouseWheelArea.width, combinesListMouseWheelArea.height, nil, -self.numLines, false, true):setSetting(assignedCombinesSetting);
 	else
 		print("setup: vehicle.cp.driver.assignedCombinesSetting not found!")
 	end
@@ -1870,10 +1875,12 @@ function courseplay.hud:setupShowWaypointsButtons(vehicle,page,line)
 	local btnW = self.buttonSize.small.w * 2 + self.buttonSize.small.w/8;
 	local hSmall = self.buttonSize.small.h;
 	local wSmall = self.buttonSize.small.w;
-	vehicle.cp.hud.visualWaypointsStartButton = courseplay.button:new(vehicle, 'global', { 'iconSprite.png', 'waypointSignsStart' }, 'toggleShowVisualWaypointsStartEnd', nil, self.col2posX[page], self.linesButtonPosY[line], btnW, hSmall, nil, nil, true, false, true, courseplay:loc('COURSEPLAY_VISUALWAYPOINTS_STARTEND'));
-	vehicle.cp.hud.visualWaypointsAllButton = courseplay.button:new(vehicle, 'global', { 'iconSprite.png', 'waypointSignsAll' }, 'toggleShowVisualWaypointsAll', nil, self.col2posX[page] + btnW * 1.5, self.linesButtonPosY[line], btnW, hSmall, nil, nil, true, false, true, courseplay:loc('COURSEPLAY_VISUALWAYPOINTS_ALL'));
-	vehicle.cp.hud.visualWaypointsEndButton = courseplay.button:new(vehicle, 'global', { 'iconSprite.png', 'waypointSignsEnd' }, 'toggleShowVisualWaypointsStartEnd', nil, self.col2posX[page] + btnW * 3, self.linesButtonPosY[line], btnW, hSmall, nil, nil, true, false, true, courseplay:loc('COURSEPLAY_VISUALWAYPOINTS_STARTEND'));
-	vehicle.cp.hud.visualWaypointsCrossingButton = courseplay.button:new(vehicle, 'global', { 'iconSprite.png', 'recordingCross' }, 'toggleShowVisualWaypointsCrossing', nil, self.col2posX[page] + btnW * 4.5, self.linesButtonPosY[line], wSmall, hSmall, nil, nil, true, false, true, courseplay:loc('COURSEPLAY_VISUALWAYPOINTS_CROSSING'));
+	--addRowButton(vehicle,setting,funct, hudPage, line, column )
+	self:addRowButton(vehicle,vehicle.cp.settings.showVisualWaypoints,'next', page, line, 2)
+	vehicle.cp.hud.visualWaypointsStartButton = courseplay.button:new(vehicle, page, { 'iconSprite.png', 'waypointSignsStart' }, nil, nil, self.col2posX[page], self.linesButtonPosY[line], btnW, hSmall);
+	vehicle.cp.hud.visualWaypointsAllButton = courseplay.button:new(vehicle, page, { 'iconSprite.png', 'waypointSignsAll' }, nil, nil, self.col2posX[page] + btnW * 1.5, self.linesButtonPosY[line], btnW, hSmall);
+	vehicle.cp.hud.visualWaypointsEndButton = courseplay.button:new(vehicle, page, { 'iconSprite.png', 'waypointSignsEnd' }, nil, nil, self.col2posX[page] + btnW * 3, self.linesButtonPosY[line], btnW, hSmall);
+	vehicle.cp.hud.visualWaypointsCrossingButton = courseplay.button:new(vehicle, page, { 'iconSprite.png', 'recordingCross' }, nil, nil, self.col2posX[page] + btnW * 4.5, self.linesButtonPosY[line], wSmall, hSmall);
 	vehicle.cp.hud.visualWaypointsStartButton:setShow(false)
 	vehicle.cp.hud.visualWaypointsAllButton:setShow(false)
 	vehicle.cp.hud.visualWaypointsEndButton:setShow(false)
@@ -2331,7 +2338,8 @@ function courseplay.hud:setGrainTransportAIDriverContent(vehicle)
 --	self:addRowButton(vehicle,nil,'setDriveNow', 1, 2, 3 )
 	--page 3 
 	self:enablePageButton(vehicle, 3)
---	self:addSettingsRowWithArrows(vehicle,vehicle.cp.settings.refillUntilPct,'changeByX', 3, 1, 1 )
+
+	self:addSettingsRowWithArrows(vehicle,vehicle.cp.settings.seperateFillTypeLoading,'changeByX', 3, 1, 1 )
 	self:addRowButton(vehicle,vehicle.cp.settings.siloSelectedFillTypeGrainTransportDriver,'addFilltype', 3, 2, 1 )
 	self:setupSiloSelectedFillTypeList(vehicle,vehicle.cp.settings.siloSelectedFillTypeGrainTransportDriver, 3, 3, 7, 1,true)
 	--page 7 

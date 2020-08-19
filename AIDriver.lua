@@ -172,7 +172,7 @@ function AIDriver:init(vehicle)
 		self.vehicle.cp.settings:validateCurrentValues()
 	end
 	self:setHudContent()
-	self.triggerHandler = TriggerHandler(self.vehicle,self:getSiloSelectedFillTypeSetting())
+	self.triggerHandler = TriggerHandler(self,self.vehicle,self:getSiloSelectedFillTypeSetting())
 	self.triggerHandler:enableFuelLoading()
 end
 
@@ -1853,6 +1853,10 @@ function AIDriver:checkFuel()
 end
 
 function AIDriver:getSiloSelectedFillTypeSetting()
+
+end
+
+function AIDriver:getSeperateFillTypeLoadingSetting()
 
 end
 

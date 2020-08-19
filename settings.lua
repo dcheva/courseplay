@@ -398,42 +398,6 @@ function courseplay:changeWorkWidth(vehicle, changeBy, force, noDraw)
 	
 end;
 
-function courseplay:toggleShowVisualWaypointsStartEnd(vehicle, force, visibilityUpdate)
-	vehicle.cp.visualWaypointsStartEnd = Utils.getNoNil(force, not vehicle.cp.visualWaypointsStartEnd);
-
-	-- also deactivate "all" points when deactivating startEnd
-	if not vehicle.cp.visualWaypointsStartEnd then
-		courseplay:toggleShowVisualWaypointsAll(vehicle, false, false);
-	end;
-
-	if visibilityUpdate == nil or visibilityUpdate then
-		courseplay.hud:setReloadPageOrder(vehicle, vehicle.cp.hud.currentPage, true);
-		courseplay.signs:setSignsVisibility(vehicle);
-	end;
-end;
-
-function courseplay:toggleShowVisualWaypointsAll(vehicle, force, visibilityUpdate)
-	vehicle.cp.visualWaypointsAll = Utils.getNoNil(force, not vehicle.cp.visualWaypointsAll);
-
-	-- also activate "start/end" points when activating "all"
-	if vehicle.cp.visualWaypointsAll then
-		courseplay:toggleShowVisualWaypointsStartEnd(vehicle, true, false);
-	end;
-
-	if visibilityUpdate == nil or visibilityUpdate then
-		courseplay.hud:setReloadPageOrder(vehicle, vehicle.cp.hud.currentPage, true);
-		courseplay.signs:setSignsVisibility(vehicle);
-	end;
-end;
-
-function courseplay:toggleShowVisualWaypointsCrossing(vehicle, force, visibilityUpdate)
-	vehicle.cp.visualWaypointsCrossing = Utils.getNoNil(force, not vehicle.cp.visualWaypointsCrossing);
-	if visibilityUpdate == nil or visibilityUpdate then
-		courseplay.hud:setReloadPageOrder(vehicle, vehicle.cp.hud.currentPage, true);
-		courseplay.signs:setSignsVisibility(vehicle);
-	end;
-end;
-	
 function courseplay:changeMode10Radius (vehicle, changeBy)
 	vehicle.cp.mode10.searchRadius = math.max(1,vehicle.cp.mode10.searchRadius + changeBy)
 end
@@ -2890,7 +2854,8 @@ function SiloSelectedFillTypeSetting:fillTypeDataToAdd(selectedfillType,counter,
 		data = {
 			fillType = selectedfillType,
 			text = g_fillTypeManager:getFillTypeByIndex(selectedfillType).title,
-			maxFillLevel = maxLevel or self.MAX_PERCENT
+			maxFillLevel = maxLevel or self.MAX_PERCENT,
+			minFillLevel = minLevel or self.MIN_PERCENT
 		}	
 	end
 	return data
@@ -2962,6 +2927,10 @@ function SiloSelectedFillTypeSetting:isActive()
 	return runCounterCheck
 end
 
+function SiloSelectedFillTypeSetting:isRunCounterActive()
+	return self.runCounterActive
+end
+
 function SiloSelectedFillTypeSetting:getTexts(index)
 	local data = self:getDataByIndex(index)
 	
@@ -2985,10 +2954,10 @@ function SiloSelectedFillTypeSetting:incrementRunCounter(index)
 	end
 end
 
-function SiloSelectedFillTypeSetting:decrementRunCounterByFillType(fillLevelInfo)
+function SiloSelectedFillTypeSetting:decrementRunCounterByFillType(lastFillTypes)
 	local totalData = self:getData()
 	for index,data in ipairs(totalData) do 
-		for fillType,info in pairs(fillLevelInfo) do 
+		for _,fillType in pairs(lastFillTypes) do
 			if data.fillType == fillType then
 				self:decrementRunCounter(index)		
 			end
@@ -3169,9 +3138,9 @@ function SiloSelectedFillTypeSetting:onWriteStream(stream)
 			streamDebugWriteInt32(stream, data.fillType)
 			if self.runCounterActive then
 				streamDebugWriteInt32(stream, data.runCounter)
-				streamDebugWriteInt32(stream, data.minFillLevel)
 			end
 			streamDebugWriteInt32(stream, data.maxFillLevel)
+			streamDebugWriteInt32(stream, data.minFillLevel)
 		end
 	end
 end
@@ -3182,12 +3151,12 @@ function SiloSelectedFillTypeSetting:onReadStream(stream)
 	if size and size>0 then
 		for key=1,size do 
 			local selectedFillType = streamDebugReadInt32(stream)
-			local counter,minLevel
+			local counter
 			if self.runCounterActive then
 				counter = streamDebugReadInt32(stream)
-				minLevel = streamDebugReadInt32(stream)
 			end
 			local maxLevel = streamDebugReadInt32(stream)
+			local minLevel = streamDebugReadInt32(stream)
 			if selectedFillType then 
 				self:addLast(self:fillTypeDataToAdd(selectedFillType,counter,maxLevel,minLevel))
 			end
@@ -3256,6 +3225,64 @@ function FieldSupplyDriver_SiloSelectedFillTypeSetting:init(vehicle)
 	SiloSelectedFillTypeSetting.init(self, vehicle, "FieldSupplyDriver")
 	self.runCounterActive = false
 	self.disallowedFillTypes = {FillType.DIESEL, FillType.DEF,FillType.AIR}
+end
+
+---@class SeperateFillTypeLoadingSetting : SettingList
+SeperateFillTypeLoadingSetting = CpObject(SettingList)
+SeperateFillTypeLoadingSetting.DEACTIVED = 0
+function SeperateFillTypeLoadingSetting:init(vehicle)
+	SettingList.init(self, 'seperateFillTypeLoading', 'COURSEPLAY_LOADING_SEPERATE_FILLTYPES', 'COURSEPLAY_LOADING_SEPERATE_FILLTYPES', vehicle,
+		{ 
+			SeperateFillTypeLoadingSetting.DEACTIVED,
+			2,
+			3
+		},
+		{ 	
+			'COURSEPLAY_DEACTIVATED',
+			string.format("%s %d",'COURSEPLAY_LOADING_SEPERATE_FILLTYPES_TRAILERS',2),
+			string.format("%s %d",'COURSEPLAY_LOADING_SEPERATE_FILLTYPES_TRAILERS',3)
+		}
+		)
+	self:set(1)
+end
+
+function SeperateFillTypeLoadingSetting:isActive()
+	return self.current>1
+end
+
+function SeperateFillTypeLoadingSetting:checkAndSetValidValue(new)
+	local diff = new<1 and #self.values or new
+	if diff > self:getSeperateFillUnits()  then 
+		return 1
+	else 
+		return SettingList.checkAndSetValidValue(self, new)
+	end
+end
+
+function SeperateFillTypeLoadingSetting:getSeperateFillUnits()
+	local TrailerInfo = {}
+	TrailerInfo.fillUnits = 0
+	self:getTrailerFillUnitCount(self.vehicle,TrailerInfo)
+	return TrailerInfo.fillUnits
+end
+
+function SeperateFillTypeLoadingSetting:getTrailerFillUnitCount(object,TrailerInfo)
+	if self:hasNeededSpec(object,Dischargeable) and self:hasNeededSpec(object,Trailer) and not self:hasNeededSpec(object,Pipe) then 
+		if object.getFillUnits then 
+			for _, fillUnit in pairs(object:getFillUnits()) do
+				TrailerInfo.fillUnits = TrailerInfo.fillUnits + 1
+			end
+		end
+	end
+	for _,impl in pairs(object:getAttachedImplements()) do
+		self:getTrailerFillUnitCount(impl.object, TrailerInfo)
+	end
+end
+
+function SeperateFillTypeLoadingSetting:hasNeededSpec(object,spec)
+	if SpecializationUtil.hasSpecialization(spec, object.specializations) then
+		return true
+	end
 end
 
 ---@class ForcedToStopSetting : BooleanSetting
@@ -3331,11 +3358,12 @@ end
 function BunkerSpeedSetting:checkAndSetValidValue(new)
 	if self.vehicle.cp.mode10.leveling then
 		if new > self.MAX_SPEED_LEVELING then 
-			return 3
+			return 1
 		else 
-			return new
+			return SettingList.checkAndSetValidValue(self, new)
 		end
-	end
+	end 
+	return SettingList.checkAndSetValidValue(self, new)
 end
 
 function BunkerSpeedSetting:onChange()
@@ -3490,6 +3518,28 @@ function AssignedCombinesSetting:getData()
 	return self.table
 end
 
+---@class ShowVisualWaypointsSetting : SettingList
+ShowVisualWaypointsSetting = CpObject(SettingList)
+ShowVisualWaypointsSetting.DEACTIVED = 0
+ShowVisualWaypointsSetting.START_STOP = 1
+ShowVisualWaypointsSetting.START_STOP_AND_CROSSING = 2
+ShowVisualWaypointsSetting.ALL = 3
+function ShowVisualWaypointsSetting:init(vehicle)
+	SettingList.init(self, 'showVisualWaypoints', 'COURSEPLAY_WAYPOINT_MODE', 'COURSEPLAY_WAYPOINT_MODE', vehicle,
+		{ 
+			ShowVisualWaypointsSetting.DEACTIVED,
+			ShowVisualWaypointsSetting.START_STOP,
+			ShowVisualWaypointsSetting.START_STOP_AND_CROSSING,
+			ShowVisualWaypointsSetting.ALL 
+		}
+		)
+	self:set(2)
+end
+
+function ShowVisualWaypointsSetting:onChange()
+	courseplay.signs:setSignsVisibility(self.vehicle)
+end
+--courseplay.signs:setSignsVisibility(self);
 --- Container for settings
 --- @class SettingsContainer
 SettingsContainer = CpObject()

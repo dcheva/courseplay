@@ -87,9 +87,7 @@ function courseplay:onLoad(savegame)
 	self.cp.crossingPoints = {};
 	self.cp.numCrossingPoints = 0;
 
-	self.cp.visualWaypointsStartEnd = true;
-	self.cp.visualWaypointsAll = false;
-	self.cp.visualWaypointsCrossing = false;
+
 	self.cp.hasHazardLights = self.spec_lights.turnLightState ~= nil and self.setTurnLightState ~= nil;
 
 
@@ -198,7 +196,6 @@ function courseplay:onLoad(savegame)
 		crossing = {};
 		current = {};
 	};
-	courseplay.signs:updateWaypointSigns(self);
 
 	self.cp.numCourses = 1;
 	self.cp.numWaypoints = 0;
@@ -572,17 +569,20 @@ function courseplay:onLoad(savegame)
 	self.cp.settings:addSetting(RefillUntilPctSetting, self)
 	self.cp.settings:addSetting(FollowAtFillLevelSetting,self)
 	self.cp.settings:addSetting(ForcedToStopSetting,self)
-	
+	self.cp.settings:addSetting(SeperateFillTypeLoadingSetting,self)
 	self.cp.settings:addSetting(ReverseSpeedSetting, self)
 	self.cp.settings:addSetting(TurnSpeedSetting, self)
 	self.cp.settings:addSetting(FieldSpeedSettting,self)
 	self.cp.settings:addSetting(StreetSpeedSetting,self)
 	self.cp.settings:addSetting(BunkerSpeedSetting,self)
+	self.cp.settings:addSetting(ShowVisualWaypointsSetting,self)
 	---@type SettingsContainer
 	self.cp.courseGeneratorSettings = SettingsContainer("courseGeneratorSettings")
 	self.cp.courseGeneratorSettings:addSetting(CenterModeSetting, self)
 	self.cp.courseGeneratorSettings:addSetting(NumberOfRowsPerLandSetting, self)
 	self.cp.courseGeneratorSettings:addSetting(HeadlandOverlapPercent, self)
+	
+	courseplay.signs:updateWaypointSigns(self);
 	
 	courseplay:setAIDriver(self, self.cp.mode)
 end;
@@ -1426,21 +1426,7 @@ function courseplay:loadVehicleCPSettings(xmlFile, key, resetVehicles)
 		self.cp.loadedCourses = StringUtil.splitString(",", courses);
 		courseplay:reloadCourses(self, true);
 
-		local visualWaypointsStartEnd = getXMLBool(xmlFile, curKey .. '#visualWaypointsStartEnd');
-		local visualWaypointsAll = getXMLBool(xmlFile, curKey .. '#visualWaypointsAll');
-		local visualWaypointsCrossing = getXMLBool(xmlFile, curKey .. '#visualWaypointsCrossing');
-		if visualWaypointsStartEnd ~= nil then
-			courseplay:toggleShowVisualWaypointsStartEnd(self, visualWaypointsStartEnd, false);
-		end;
-		if visualWaypointsAll ~= nil then
-			courseplay:toggleShowVisualWaypointsAll(self, visualWaypointsAll, false);
-		end;
-		if visualWaypointsCrossing ~= nil then
-			courseplay:toggleShowVisualWaypointsCrossing(self, visualWaypointsCrossing, false);
-		end;
-		--courseplay.buttons:setActiveEnabled(self, 'visualWaypoints');
-		courseplay.signs:setSignsVisibility(self);
-
+		
 		self.cp.siloSelectedFillType = Utils.getNoNil(getXMLInt(xmlFile, curKey .. '#siloSelectedFillType'), FillType.UNKNOWN);
 		if self.cp.siloSelectedFillType == nil then self.cp.siloSelectedFillType = FillType.UNKNOWN end 
 
@@ -1591,9 +1577,6 @@ function courseplay:saveToXMLFile(xmlFile, key, usedModNames)
 	else
 		setXMLString(xmlFile, newKey..".basics #courses", tostring(table.concat(self.cp.loadedCourses, ",")))
 	end
-	setXMLBool(xmlFile, newKey..".basics #visualWaypointsStartEnd", self.cp.visualWaypointsStartEnd)
-	setXMLBool(xmlFile, newKey..".basics #visualWaypointsAll", self.cp.visualWaypointsAll)
-	setXMLBool(xmlFile, newKey..".basics #visualWaypointsCrossing", self.cp.visualWaypointsCrossing)
 	setXMLInt(xmlFile, newKey..".basics #waitTime", self.cp.waitTime)
 	setXMLInt(xmlFile, newKey..".basics #siloSelectedFillType", self.cp.siloSelectedFillType or FillType.UNKNOWN)
 	setXMLInt(xmlFile, newKey..".basics #runCounter", runCounter)

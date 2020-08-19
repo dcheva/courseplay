@@ -12,9 +12,9 @@ TriggerHandler.myLoadingStates = {
 }
 TriggerHandler.APPROACH_AUGER_TRIGGER_SPEED = 3
 
-function TriggerHandler:init(vehicle,siloSelectedFillTypeSetting)
+function TriggerHandler:init(driver,vehicle,siloSelectedFillTypeSetting)
 	self.vehicle = vehicle
-	self.driver = vehicle.cp.driver
+	self.driver = driver
 	self.siloSelectedFillTypeSetting=siloSelectedFillTypeSetting
 --	self.driveOnAtFillLevel=driveOnAtFillLevelSetting
 	self.allwaysSearchFuel = vehicle.cp.settings.allwaysSearchFuel
@@ -28,6 +28,7 @@ function TriggerHandler:init(vehicle,siloSelectedFillTypeSetting)
 	self.triggers = {}
 	self.isInAugerWagonTrigger = false
 	self.fillableObject = nil
+	self.lastFillTypes = {}
 end 
 
 function TriggerHandler:initStates(states)
@@ -368,6 +369,11 @@ end
 
 function TriggerHandler:disableFillTypeLoading()
 	self.validFillTypeLoading = false
+	if self.siloSelectedFillTypeSetting:isRunCounterActive() then 
+		self.siloSelectedFillTypeSetting:decrementRunCounterByFillType(self.lastFillTypes)
+		self.driver:refreshHUD()
+	end	
+	self.lastFillTypes = {}
 end 
 
 function TriggerHandler:disableFillTypeUnloading()
@@ -392,7 +398,7 @@ function TriggerHandler:isAllowedToLoadFuel()
 end 
 
 function TriggerHandler:canLoadFillType(object,fillUnitIndex,maxFillLevelPercentage)  
-	local objectFillLevelPercentage = object:getFillUnitFillLevelPercentage(fillUnitIndex)
+	local objectFillLevelPercentage = object:getFillUnitFillLevelPercentage(fillUnitIndex)	
 	courseplay:debugFormat(2,"fillPercentage: %s > maxFillLevel: %s",tostring(objectFillLevelPercentage),tostring(maxFillLevelPercentage))
 	return objectFillLevelPercentage*100 < (maxFillLevelPercentage or 99)
 end
@@ -407,6 +413,17 @@ function TriggerHandler:isRunCounterValid(runCounter)
 	return runCounter and runCounter>0 or runCounter == nil
 end
 
+function TriggerHandler:isAllowedToLoadSeperateFillType(fillTypeIndex)
+	local seperateFillTypeLoading = self.driver:getSeperateFillTypeLoadingSetting()
+	if seperateFillTypeLoading and seperateFillTypeLoading:isActive() then 
+		for _,fillType in ipairs(self.lastFillTypes) do 
+			if fillType == fillTypeIndex and #self.lastFillTypes < seperateFillTypeLoading:get() then 
+				return false
+			end
+		end
+	end
+	return true
+end
 
 -- Custom version of trigger:onActivateObject to allow activating for a non-controlled vehicle
 function TriggerHandler:activateTriggerForVehicle(trigger, vehicle)
@@ -493,26 +510,31 @@ function TriggerHandler:onActivateObject(superFunc,vehicle)
 						if self.fillTypes == nil or self.fillTypes[fillTypeIndex] then
 							if fillableObject:getFillUnitAllowsFillType(fillUnitIndex, fillTypeIndex) and fillTypeIndex == data.fillType then
 								if triggerHandler:canLoadFillType(fillableObject,fillUnitIndex,data.maxFillLevel) then 
-									if triggerHandler:isMinFillLevelReached(fillableObject,fillUnitIndex,fillLevel,data.minFillLevel) then 
-										if triggerHandler:isRunCounterValid(data.runCounter) then 
-											--waiting for cover to be open
-											if fillableObject.spec_cover and fillableObject.spec_cover.isDirty then 
-												triggerHandler:setLoadingState(fillableObject,fillUnitIndex,fillTypeIndex,self)
-												courseplay.debugFormat(2, 'Cover is still opening!')
+									if triggerHandler:isAllowedToLoadSeperateFillType(fillType) then
+										if triggerHandler:isMinFillLevelReached(fillableObject,fillUnitIndex,fillLevel,data.minFillLevel) then 
+											if triggerHandler:isRunCounterValid(data.runCounter) then 
+												--waiting for cover to be open
+												if fillableObject.spec_cover and fillableObject.spec_cover.isDirty then 
+													triggerHandler:setLoadingState(fillableObject,fillUnitIndex,fillTypeIndex,self)
+													courseplay.debugFormat(2, 'Cover is still opening!')
+													return
+												end
+												--all okay start loading
+												self:onFillTypeSelection(fillTypeIndex)
+												table.insert(triggerHandler.lastFillTypes, fillTypeIndex)
+												g_currentMission.activatableObjects[self] = nil
 												return
+											else
+												--runCounter is zero
+												courseplay.debugFormat(2, 'runCounter = 0!')
 											end
-											--all okay start loading
-											self:onFillTypeSelection(fillTypeIndex)
-											g_currentMission.activatableObjects[self] = nil
-											return
-										else
-											--runCounter is zero
-											courseplay.debugFormat(2, 'runCounter = 0!')
+										else	
+											--not enough in silo
+											courseplay.debugFormat(2, 'FillType is empty or minFillLevel not reached!')
+											emptyOnes = emptyOnes +1
 										end
-									else	
-										--not enough in silo
-										courseplay.debugFormat(2, 'FillType is empty or minFillLevel not reached!')
-										emptyOnes = emptyOnes +1
+									else 
+										courseplay.debugFormat(2, 'already loaded seperate FillType')
 									end
 								else
 									--full
@@ -522,6 +544,8 @@ function TriggerHandler:onActivateObject(superFunc,vehicle)
 									return
 								end
 							end
+						else 
+							lastCounter=0
 						end
 					end
 					lastCounter=data.runCounter
@@ -633,18 +657,23 @@ function TriggerHandler:setFillUnitIsFilling(superFunc,isFilling, noEventSend)
 								end
 								if fillUnitIndex then
 									if triggerHandler:canLoadFillType(self,fillUnitIndex,data.maxFillLevel) then 
-							--			if triggerHandler:isMinFillLevelReached(object,fillUnitIndex,triggerFillLevel) then 
-											if triggerHandler:isRunCounterValid(data.runCounter) then 
-												triggerHandler:setLoadingState(self,fillUnitIndex,fillType)
-												spec.fillTrigger.currentTrigger = trigger
-												courseplay.debugFormat(2,"FillUnit setLoading, FillType: "..g_fillTypeManager:getFillTypeByIndex(fillType).title)
-												break
-											else
-												courseplay.debugFormat(2, 'runCounter == 0!')
-											end
-						--				else
-											--minFillLevel not reached
-						--				end
+										if triggerHandler:isAllowedToLoadSeperateFillType(fillType) then
+								--			if triggerHandler:isMinFillLevelReached(object,fillUnitIndex,triggerFillLevel) then 
+												if triggerHandler:isRunCounterValid(data.runCounter) then 
+													triggerHandler:setLoadingState(self,fillUnitIndex,fillType)
+													spec.fillTrigger.currentTrigger = trigger
+													table.insert(triggerHandler.lastFillTypes, fillTypeIndex)
+													courseplay.debugFormat(2,"FillUnit setLoading, FillType: "..g_fillTypeManager:getFillTypeByIndex(fillType).title)
+													break
+												else
+													courseplay.debugFormat(2, 'runCounter == 0!')
+												end
+							--				else
+												--minFillLevel not reached
+							--				end
+										else 
+											courseplay.debugFormat(2, 'already loaded seperate FillType')
+										end
 									else
 										courseplay.debugFormat(2, 'fillLevel reached')
 									end

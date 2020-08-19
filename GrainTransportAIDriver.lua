@@ -44,6 +44,7 @@ function GrainTransportAIDriver:isAlignmentCourseNeeded(ix)
 	return false
 end
 
+--TODO: consolidate this with AIDriver:drive() 
 function GrainTransportAIDriver:drive(dt)
 	-- make sure we apply the unload offset when needed
 	self:updateOffset()
@@ -104,6 +105,7 @@ function GrainTransportAIDriver:drive(dt)
 	end
 end
 
+--can be removed maybe ??
 function GrainTransportAIDriver:onWaypointChange(newIx)
 	self:debug('On waypoint change %d', newIx)
 	AIDriver.onWaypointChange(self, newIx)
@@ -111,19 +113,9 @@ function GrainTransportAIDriver:onWaypointChange(newIx)
 		self:debug('Reaching last waypoint')
 		self:setDriveUnloadNow(false);
 	end
-	-- Close cover after leaving the silo, assuming the silo is at waypoint 1
-	if not self:hasTipTrigger() and not self:isNearFillPoint() then
-	--	courseplay:openCloseCover(self.vehicle, courseplay.SHOW_COVERS)
-	end
-	--temp solution till load_tippers is refactored
-	-- and we can have a non cyclic value that the loading process is finished
-	--THIS is not working as it should with multiple trailers!!! 
-	if newIx == 4 then
-		self:decrementRunCounter()
-		self:refreshHUD()
-	end	
 end
 
+--this one is probably broken ??
 -- TODO: move this into onWaypointPassed() instead
 function GrainTransportAIDriver:checkLastWaypoint()
 	local allowedToDrive = true
@@ -151,45 +143,11 @@ end
 --	return self:isNearFillPoint()
 --end
 
-function GrainTransportAIDriver:decrementRunCounter()
-	local fillLevelInfo = {}
-	self:getAllFillLevels(self.vehicle, fillLevelInfo)
-	self:getSiloSelectedFillTypeSetting():decrementRunCounterByFillType(fillLevelInfo)
-end
-
-
 function GrainTransportAIDriver:getSiloSelectedFillTypeSetting()
 	return self.vehicle.cp.settings.siloSelectedFillTypeGrainTransportDriver
 end
 
-
-function GrainTransportAIDriver:getAllFillLevels(object, fillLevelInfo)
-	-- get own fill levels
-	if object.getFillUnits then
-		for _, fillUnit in pairs(object:getFillUnits()) do
-			local fillType = self:getFillTypeFromFillUnit(fillUnit)
-			local fillTypeName = g_fillTypeManager:getFillTypeNameByIndex(fillType)
-			self:debugSparse('%s: Fill levels: %s: %.1f/%.1f', object:getName(), fillTypeName, fillUnit.fillLevel, fillUnit.capacity)
-			if not fillLevelInfo[fillType] then fillLevelInfo[fillType] = {fillLevel=0, capacity=0} end
-			fillLevelInfo[fillType].fillLevel = fillLevelInfo[fillType].fillLevel + fillUnit.fillLevel
-			fillLevelInfo[fillType].capacity = fillLevelInfo[fillType].capacity + fillUnit.capacity
-		end
-	end
- 	-- collect fill levels from all attached implements recursively
-	for _,impl in pairs(object:getAttachedImplements()) do
-		self:getAllFillLevels(impl.object, fillLevelInfo)
-	end
+function GrainTransportAIDriver:getSeperateFillTypeLoadingSetting()
+	return self.vehicle.cp.settings.seperateFillTypeLoading
 end
 
-function GrainTransportAIDriver:getFillTypeFromFillUnit(fillUnit)
-	local fillType = fillUnit.lastValidFillType or fillUnit.fillType
-	-- TODO: do we need to check more supported fill types? This will probably cover 99.9% of the cases
-	if fillType == FillType.UNKNOWN then
-		-- just get the first valid supported fill type
-		for ft, valid in pairs(fillUnit.supportedFillTypes) do
-			if valid then return ft end
-		end
-	else
-		return fillType
-	end
-end
