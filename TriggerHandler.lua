@@ -79,7 +79,7 @@ function TriggerHandler:readUpdateStream(streamId)
 end
 
 function TriggerHandler:onDriveNow()
-
+	self:setDriveNow()
 end
 
 
@@ -503,7 +503,7 @@ LoadTrigger.getIsActivatable = Utils.overwrittenFunction(LoadTrigger.getIsActiva
 
 --LoadTrigger activate, if fillType is right and fillLevel ok 
 function TriggerHandler:onActivateObject(superFunc,vehicle)
-	if courseplay:isAIDriverActive(vehicle) then 
+	if g_server ~= nil and courseplay:isAIDriverActive(vehicle) then 
 		local triggerHandler = vehicle.cp.driver.triggerHandler
 		if not triggerHandler:isAllowedToLoadFuel() and not triggerHandler:isAllowedToLoadFillType() then 
 			return superFunc(self)
@@ -621,21 +621,23 @@ LoadTrigger.onActivateObject = Utils.overwrittenFunction(LoadTrigger.onActivateO
 
 --LoadTrigger => start/stop driver and close cover once free from trigger
 function TriggerHandler:setIsLoading(superFunc,isLoading, targetObject, fillUnitIndex, fillType, noEventSend)
-	local rootVehicle = self.validFillableObject:getRootVehicle()
-	if courseplay:isAIDriverActive(rootVehicle) then
-		local triggerHandler = rootVehicle.cp.driver.triggerHandler
-		if not triggerHandler.validFillTypeLoading and not triggerHandler.validFuelLoading then
-			return superFunc(self,isLoading, targetObject, fillUnitIndex, fillType, noEventSend)
-		end
-		if isLoading then 
-			triggerHandler:setLoadingState(self.validFillableObject,fillUnitIndex, fillType,self)
-			courseplay.debugFormat(2, 'LoadTrigger setLoading, FillType: '..g_fillTypeManager:getFillTypeByIndex(fillType).title)
-		else 
-			triggerHandler:disableUnloadingTriggerUnderFillTrigger(self.validFillableObject)
-			triggerHandler:resetLoadingState()
-			courseplay.debugFormat(2, 'LoadTrigger resetLoading and close Cover')
-			SpecializationUtil.raiseEvent(self.validFillableObject, "onRemovedFillUnitTrigger",#self.validFillableObject.spec_fillUnit.fillTrigger.triggers)
-			g_currentMission:addActivatableObject(self)
+	if g_server ~= nil and self.validFillableObject then 
+		local rootVehicle = self.validFillableObject:getRootVehicle()
+		if courseplay:isAIDriverActive(rootVehicle) then
+			local triggerHandler = rootVehicle.cp.driver.triggerHandler
+			if not triggerHandler.validFillTypeLoading and not triggerHandler.validFuelLoading then
+				return superFunc(self,isLoading, targetObject, fillUnitIndex, fillType, noEventSend)
+			end
+			if isLoading then 
+				triggerHandler:setLoadingState(self.validFillableObject,fillUnitIndex, fillType,self)
+				courseplay.debugFormat(2, 'LoadTrigger setLoading, FillType: '..g_fillTypeManager:getFillTypeByIndex(fillType).title)
+			else 
+				triggerHandler:disableUnloadingTriggerUnderFillTrigger(self.validFillableObject)
+				triggerHandler:resetLoadingState()
+				courseplay.debugFormat(2, 'LoadTrigger resetLoading and close Cover')
+				SpecializationUtil.raiseEvent(self.validFillableObject, "onRemovedFillUnitTrigger",#self.validFillableObject.spec_fillUnit.fillTrigger.triggers)
+				g_currentMission:addActivatableObject(self)
+			end
 		end
 	end
 	return superFunc(self,isLoading, targetObject, fillUnitIndex, fillType, noEventSend)
@@ -645,7 +647,7 @@ LoadTrigger.setIsLoading = Utils.overwrittenFunction(LoadTrigger.setIsLoading,Tr
 --close cover after tipping for trailer if not closed already
 function TriggerHandler:endTipping(superFunc,noEventSend)
 	local rootVehicle = self:getRootVehicle()
-	if courseplay:isAIDriverActive(rootVehicle) then
+	if g_server ~=nil and courseplay:isAIDriverActive(rootVehicle) then
 		if rootVehicle.cp.settings.automaticCoverHandling:is(true) and self.spec_cover then
 			self:setCoverState(0, true)
 		end
@@ -657,7 +659,7 @@ Trailer.endTipping = Utils.overwrittenFunction(Trailer.endTipping,TriggerHandler
 
 function TriggerHandler:setFillUnitIsFilling(superFunc,isFilling, noEventSend)
 	local rootVehicle = self:getRootVehicle()
-	if courseplay:isAIDriverActive(rootVehicle) then 
+	if g_server ~=nil and courseplay:isAIDriverActive(rootVehicle) then 
 		local triggerHandler = rootVehicle.cp.driver.triggerHandler
 		if not triggerHandler:isAllowedToLoadFuel() and not triggerHandler:isAllowedToLoadFillType() then
 			return superFunc(self,isFilling, noEventSend)
@@ -761,7 +763,7 @@ function TriggerHandler:loadTriggerCallback(triggerId, otherId, onEnter, onLeave
 	if fillableObject and fillableObject:isa(Vehicle) then 
 		rootVehicle = fillableObject:getRootVehicle()
 	end
-	if courseplay:isAIDriverActive(rootVehicle) then
+	if g_server ~=nil and courseplay:isAIDriverActive(rootVehicle) then
 	--	if rootVehicle.cp.driver.triggerHandler.validFillTypeLoading then
 			TriggerHandler:handleLoadTriggerCallback(self,triggerId, otherId, onEnter, onLeave, onStay, otherShapeId,rootVehicle,fillableObject)
 	--	end
@@ -812,7 +814,7 @@ function TriggerHandler:fillTriggerCallback(superFunc, triggerId, otherActorId, 
 	if fillableObject and fillableObject:isa(Vehicle) then 
 		rootVehicle = fillableObject:getRootVehicle()
 	end
-	if courseplay:isAIDriverActive(rootVehicle) then
+	if g_server ~=nil and courseplay:isAIDriverActive(rootVehicle) then
 		local triggerHandler = rootVehicle.cp.driver.triggerHandler
 		if not triggerHandler.validFillTypeLoading then
 			return superFunc(self,triggerId, otherActorId, onEnter, onLeave, onStay, otherShapeId)
@@ -842,7 +844,7 @@ end
 --Pipe callback used for augerwagons to open the cover on the fillableObject
 function TriggerHandler:unloadingTriggerCallback(superFunc,triggerId, otherId, onEnter, onLeave, onStay, otherShapeId)
 	local rootVehicle = self:getRootVehicle()
-	if courseplay:isAIDriverActive(rootVehicle) and rootVehicle.cp.driver.triggerHandler.validFillTypeUnloadingAugerWagon then 
+	if g_server ~=nil and courseplay:isAIDriverActive(rootVehicle) and rootVehicle.cp.driver.triggerHandler.validFillTypeUnloadingAugerWagon then 
 		local triggerHandler = rootVehicle.cp.driver.triggerHandler
 		local object = g_currentMission:getNodeObject(otherId)
         if object ~= nil and object ~= self and object:isa(Vehicle) then
@@ -887,7 +889,7 @@ Pipe.unloadingTriggerCallback = Utils.overwrittenFunction(Pipe.unloadingTriggerC
 --stoping mode 4 driver for augerwagons
 function TriggerHandler:onDischargeStateChanged(superFunc,state)
 	local rootVehicle = self:getRootVehicle()
-	if courseplay:isAIDriverActive(rootVehicle) then
+	if g_server ~=nil and courseplay:isAIDriverActive(rootVehicle) then
 		local triggerHandler = rootVehicle.cp.driver.triggerHandler
 		local dischargeNode = self:getCurrentDischargeNode()
 		if dischargeNode and dischargeNode.dischargeObject and triggerHandler.validFillTypeUnloadingAugerWagon then 

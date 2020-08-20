@@ -69,7 +69,7 @@ function FillableFieldworkAIDriver:driveUnloadOrRefill()
 	else
 		self:clearInfoText('NO_SELECTED_FILLTYPE')
 	end
-	local isNearWaitPoint, waitPointIx = self.course:hasWaitPointWithinDistance(self.ppc:getCurrentWaypointIx(), 5)
+	local isNearWaitPoint, waitPointIx = self.course:hasWaitPointWithinDistance(self.ppc:getCurrentWaypointIx(), 10)
 	self.waitPointIx = waitPointIx
 	--this one is used to disable loading at the unloading stations,
 	--might be better to disable the triggerID for loading

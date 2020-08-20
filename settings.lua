@@ -107,8 +107,8 @@ end;]]
 
 --TODO: should be removed and changed directly to driveUnloadNow Setting?
 function courseplay:setDriveNow(vehicle)
-	courseplay:setDriveUnloadNow(vehicle, true);
-	vehicle.cp.driver.triggerHandler:setDriveNow()
+--	courseplay:setDriveUnloadNow(vehicle, true);
+	vehicle.cp.driver:setDriveNow()
 end
 
 function courseplay:forceGoToUnloadCourse(vehicle)

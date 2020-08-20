@@ -1601,6 +1601,21 @@ function AIDriver:setDriveUnloadNow(driveUnloadNow)
 	courseplay:setDriveUnloadNow(self.vehicle, driveUnloadNow or false)
 end
 
+function AIDriver:setDriveNow()
+	if self.stopAndChangeToUnload then 
+		self:stopAndChangeToUnload()
+	end
+	if self:isWaiting() then 
+		self:continue()
+		self.vehicle.cp.wait = false
+		--is this one needed ??
+		if self.vehicle.cp.mode == 1 or self.vehicle.cp.mode == 3 then
+			self.vehicle.cp.isUnloaded = true;
+		end;
+	end
+	self.triggerHandler:onDriveNow()
+end
+
 function AIDriver:getDriveUnloadNow()
 	return self.vehicle.cp.settings.driveUnloadNow:get()
 end
@@ -1861,8 +1876,7 @@ function AIDriver:getSeperateFillTypeLoadingSetting()
 end
 
 function AIDriver:getCanShowDriveOnButton()
-	if self.triggerHandler:isLoading() or self.triggerHandler:isUnloading() then 
-		
+	if self.triggerHandler:isLoading() or self.triggerHandler:isUnloading() or self:isWaiting() then 
 		return true
 	end
 	self:refreshHUD()

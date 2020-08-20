@@ -697,18 +697,7 @@ function courseplay.hud:updatePageContent(vehicle, page)
 							self:disableButtonsOnThisPage(vehicle,page)
 							self:showRecordingButtons(vehicle, true)
 						end
-					else
-						self:disableButtonWithFunction(vehicle,page, 'cancelWait')
 					end
-				
-				elseif entry.functionToCall == 'cancelWait' then
-						if vehicle.cp.driver and vehicle:getIsCourseplayDriving() and vehicle.cp.driver.isWaiting and vehicle.cp.driver:isWaiting() then
-							self:enableButtonWithFunction(vehicle,page, 'cancelWait')
-							vehicle.cp.hud.content.pages[page][line][1].text = courseplay:loc('COURSEPLAY_CONTINUE')
-						else
-							self:disableButtonWithFunction(vehicle,page, 'cancelWait')
-						end				
-					
 				elseif entry.functionToCall == 'startingPoint:next' then
 					--StartingPointSetting
 					if not vehicle:getIsCourseplayDriving() and vehicle.cp.canDrive then
@@ -996,24 +985,12 @@ function courseplay.hud:updatePageContent(vehicle, page)
 				--TODO: setDriveNow and forceGoToUnloadCourse should be same !! 
 				elseif entry.functionToCall == 'setDriveNow' then
 					if not vehicle.cp.isRecording and not vehicle.cp.recordingIsPaused then
-						if vehicle.cp.driver and vehicle.cp.driver.getCanShowDriveOnButton and not vehicle.cp.driver:isWaiting() then
+						if vehicle.cp.driver and vehicle.cp.driver.getCanShowDriveOnButton then
 							if vehicle:getIsCourseplayDriving() and vehicle.cp.driver:getCanShowDriveOnButton() then
 								self:enableButtonWithFunction(vehicle,page, 'setDriveNow')
 								vehicle.cp.hud.content.pages[page][line][1].text = vehicle.cp.settings.driveUnloadNow:getLabel()
 							else
 								self:disableButtonWithFunction(vehicle,page, 'setDriveNow')
-							end
-						end
-					end
-				
-				elseif entry.functionToCall == 'forceGoToUnloadCourse' then
-					if not vehicle.cp.isRecording and not vehicle.cp.recordingIsPaused then
-						if vehicle.cp.driver and vehicle.cp.driver.getCanShowDriveOnButton then
-							if vehicle:getIsCourseplayDriving() and vehicle.cp.driver:getCanShowDriveOnButton() then
-								self:enableButtonWithFunction(vehicle,page, 'forceGoToUnloadCourse')
-								vehicle.cp.hud.content.pages[page][line][1].text = courseplay:loc('COURSEPLAY_DRIVE_NOW')
-							else
-								self:disableButtonWithFunction(vehicle,page, 'forceGoToUnloadCourse')			
 							end
 						end
 					end
@@ -2290,7 +2267,6 @@ function courseplay.hud:setAIDriverContent(vehicle)
 	self:enablePageButton(vehicle,1)
 	self:addRowButton(vehicle,nil,'startStop', 1, 1, 1 )
 	self:addRowButton(vehicle,nil,'start_record', 1, 1, 2 )
---	self:addRowButton(vehicle,nil,'cancelWait', 1, 2, 1 )
 	self:addRowButton(vehicle,vehicle.cp.settings.startingPoint,'next', 1, 2, 2 )
 	self:addRowButton(vehicle,nil,'setDriveNow', 1, 2, 3 )
 	self:addRowButton(vehicle,vehicle.cp.settings.stopAtEnd,'toggle', 1, 3, 1 )
@@ -2332,8 +2308,6 @@ end
 
 function courseplay.hud:setGrainTransportAIDriverContent(vehicle)
 	self:debug(vehicle,"setGrainTransportAIDriverContent")
-	--page 1 driving
---	self:addRowButton(vehicle,nil,'setDriveNow', 1, 2, 3 )
 	--page 3 
 	self:enablePageButton(vehicle, 3)
 
@@ -2390,8 +2364,6 @@ end
 function courseplay.hud:setUnloadableFieldworkAIDriverContent(vehicle)
 	self:debug(vehicle,"setUnloadableFieldworkAIDriverContent")
 	
---	self:addRowButton(vehicle,nil,'forceGoToUnloadCourse', 1, 2, 3 )
-
 	self:addSettingsRow(vehicle,vehicle.cp.settings.refillUntilPct,'changeByX', 3, 5, 1 )
 	
 	self:setReloadPageOrder(vehicle, -1, true)
@@ -2417,9 +2389,6 @@ end
 
 function courseplay.hud:setCombineUnloadAIDriverContent(vehicle,assignedCombinesSetting)
 	self:debug(vehicle,"setCombineUnloadAIDriverContent")
-
-	--page 1
---	self:addRowButton(vehicle,nil,'setDriveNow', 1, 2, 3 )
 
 	-- page 3
 	self:enablePageButton(vehicle, 3)
