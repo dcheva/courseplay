@@ -2409,7 +2409,7 @@ function SearchCombineOnFieldSetting:refresh()
 end
 
 function SearchCombineOnFieldSetting:changeByX(x)
-	if courseplay.fields.numAvailableFields == 0 or not vehicle.cp.searchCombineAutomatically then
+	if courseplay.fields.numAvailableFields == 0 or not self.vehicle.cp.searchCombineAutomatically then
 		self:set(0)
 		return
 	end
