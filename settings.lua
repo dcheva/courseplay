@@ -105,15 +105,12 @@ end;]]
 	return true;
 end;]]
 
---TODO: should be removed and changed directly to driveUnloadNow Setting?
+--TODO: call AIDriver directly
 function courseplay:setDriveNow(vehicle)
 --	courseplay:setDriveUnloadNow(vehicle, true);
 	vehicle.cp.driver:setDriveNow()
 end
 
-function courseplay:forceGoToUnloadCourse(vehicle)
-	vehicle.cp.driver:stopAndChangeToUnload()
-end
 
 function courseplay:toggleConvoyActive(vehicle)
 	vehicle.cp.convoyActive =  not vehicle.cp.convoyActive

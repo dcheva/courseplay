@@ -1602,9 +1602,6 @@ function AIDriver:setDriveUnloadNow(driveUnloadNow)
 end
 
 function AIDriver:setDriveNow()
-	if self.stopAndChangeToUnload then 
-		self:stopAndChangeToUnload()
-	end
 	if self:isWaiting() then 
 		self:continue()
 		self.vehicle.cp.wait = false
@@ -1876,8 +1873,5 @@ function AIDriver:getSeperateFillTypeLoadingSetting()
 end
 
 function AIDriver:getCanShowDriveOnButton()
-	if self.triggerHandler:isLoading() or self.triggerHandler:isUnloading() or self:isWaiting() then 
-		return true
-	end
-	self:refreshHUD()
+	return self.triggerHandler:isLoading() or self.triggerHandler:isUnloading() or self:isWaiting()
 end
