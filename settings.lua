@@ -3207,7 +3207,7 @@ FieldSupplyDriver_SiloSelectedFillTypeSetting = CpObject(SiloSelectedFillTypeSet
 function FieldSupplyDriver_SiloSelectedFillTypeSetting:init(vehicle)
 	SiloSelectedFillTypeSetting.init(self, vehicle, "FieldSupplyDriver")
 	self.runCounterActive = false
-	self.disallowedFillTypes = {FillType.DIESEL, FillType.DEF,FillType.AIR}
+	self.disallowedFillTypes = {FillType.DEF,FillType.AIR}
 end
 
 ---@class SeperateFillTypeLoadingSetting : SettingList
@@ -3222,8 +3222,8 @@ function SeperateFillTypeLoadingSetting:init(vehicle)
 		},
 		{ 	
 			'COURSEPLAY_DEACTIVATED',
-			'COURSEPLAY_LOADING_SEPERATE_FILLTYPES_TRAILERS'..2,
-			'COURSEPLAY_LOADING_SEPERATE_FILLTYPES_TRAILERS'..3
+			'COURSEPLAY_LOADING_SEPERATE_FILLTYPES_TRAILERS',
+			'COURSEPLAY_LOADING_SEPERATE_FILLTYPES_TRAILERS'
 		}
 		)
 	self:set(1)
@@ -3264,6 +3264,16 @@ end
 
 function SeperateFillTypeLoadingSetting:hasNeededSpec(object,spec)
 	if SpecializationUtil.hasSpecialization(spec, object.specializations) then
+		return true
+	end
+end
+
+function SeperateFillTypeLoadingSetting:getText()
+	return self.current>1 and courseplay:loc(self.texts[self.current])..self:get() or SettingList.getText(self)
+end
+
+function SeperateFillTypeLoadingSetting:isActive()
+	if not self.vehicle.cp.driver:getSiloSelectedFillTypeSetting():isEmpty() and self.vehicle.cp.driver:is_a(GrainTransportAIDriver) then 
 		return true
 	end
 end

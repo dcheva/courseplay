@@ -257,6 +257,7 @@ end;
 
 function courseplay.button:handleInput(vehicle,parameter)
 	if self.settingCall then --settingButton
+		courseplay:debug(string.format("%s: handleSettingInput: %s:%s(%s)", nameNum(vehicle),tostring(self.settingCall.name), tostring(self.functionToCall), tostring(parameter)), 18);
 		self.settingCall[self.functionToCall](self.settingCall, parameter)	
 		if vehicle:getIsEntered() then
 			g_currentMission.hud.guiSoundPlayer:playSample(GuiSoundPlayer.SOUND_SAMPLES.CLICK)

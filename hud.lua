@@ -980,8 +980,14 @@ function courseplay.hud:updatePageContent(vehicle, page)
 				
 				elseif entry.functionToCall == 'driveOnAtFillLevel:changeByX' then
 					--DriveOnAtFillLevelSetting
-					vehicle.cp.hud.content.pages[page][line][1].text = vehicle.cp.settings.driveOnAtFillLevel:getLabel()
-					vehicle.cp.hud.content.pages[page][line][2].text = vehicle.cp.settings.driveOnAtFillLevel:getText()
+					if not vehicle.cp.settings.seperateFillTypeLoading:isActive() then
+						vehicle.cp.hud.content.pages[page][line][1].text = vehicle.cp.settings.driveOnAtFillLevel:getLabel()
+						vehicle.cp.hud.content.pages[page][line][2].text = vehicle.cp.settings.driveOnAtFillLevel:getText()
+						self:enableButtonWithFunction(vehicle,page, 'changeByX',vehicle.cp.settings.driveOnAtFillLevel)
+					else 
+						self:disableButtonWithFunction(vehicle,page, 'changeByX',vehicle.cp.settings.driveOnAtFillLevel)
+					end
+				
 				--TODO: setDriveNow and forceGoToUnloadCourse should be same !! 
 				elseif entry.functionToCall == 'setDriveNow' then
 					if not vehicle.cp.isRecording and not vehicle.cp.recordingIsPaused then
@@ -1146,8 +1152,13 @@ function courseplay.hud:updatePageContent(vehicle, page)
 					vehicle.cp.hud.content.pages[page][line][1].text = vehicle.cp.settings.refillUntilPct:getLabel() 
 					vehicle.cp.hud.content.pages[page][line][2].text = vehicle.cp.settings.refillUntilPct:getText()
 				elseif entry.functionToCall == 'seperateFillTypeLoading:changeByX' then					
-					vehicle.cp.hud.content.pages[page][line][1].text = vehicle.cp.settings.seperateFillTypeLoading:getLabel() 
-					vehicle.cp.hud.content.pages[page][line][2].text = vehicle.cp.settings.seperateFillTypeLoading:getText()						
+					if vehicle.cp.settings.seperateFillTypeLoading:isActive() then
+						vehicle.cp.hud.content.pages[page][line][1].text = vehicle.cp.settings.seperateFillTypeLoading:getLabel() 
+						vehicle.cp.hud.content.pages[page][line][2].text = vehicle.cp.settings.seperateFillTypeLoading:getText()
+						self:enableButtonWithFunction(vehicle,page,'changeByX',vehicle.cp.settings.seperateFillTypeLoading)
+					else
+						self:disableButtonWithFunction(vehicle,page,'changeByX',vehicle.cp.settings.seperateFillTypeLoading)
+					end
 				elseif entry.functionToCall == 'automaticUnloadingOnField:toggle' then
 					--not used right now!
 					--AutomaticUnloadingOnFieldSetting 
@@ -2224,7 +2235,11 @@ function courseplay.hud:disableButtonsOnThisPage(vehicle,page)
 end
 
 function courseplay.hud:enableButtonWithFunction(vehicle,page, func,class)
-	self:debug(vehicle,"enableButton: "..func)
+	if class then 
+		self:debug(vehicle,string.format("enableButton  Setting: %s function: %s",class.name, func))
+	else 
+		self:debug(vehicle,string.format("enableButton CP function: %s", func))
+	end
 	for _, button in pairs(vehicle.cp.buttons[page])do
 		if button.settingCall then
 			if button.functionToCall == func and button.settingCall == class then
@@ -2241,7 +2256,11 @@ function courseplay.hud:enableButtonWithFunction(vehicle,page, func,class)
 end
 
 function courseplay.hud:disableButtonWithFunction(vehicle,page, func,class)
-	self:debug(vehicle,"disableButton: "..func)
+	if class then 
+		self:debug(vehicle,string.format("disableButton  Setting: %s function: %s",class.name, func))
+	else 
+		self:debug(vehicle,string.format("disableButton CP function: %s", func))
+	end
 	for _, button in pairs(vehicle.cp.buttons[page])do
 		if button.settingCall then
 			if button.functionToCall == func and button.settingCall == class then
@@ -2310,8 +2329,8 @@ function courseplay.hud:setGrainTransportAIDriverContent(vehicle)
 	self:debug(vehicle,"setGrainTransportAIDriverContent")
 	--page 3 
 	self:enablePageButton(vehicle, 3)
-
-	self:addSettingsRowWithArrows(vehicle,vehicle.cp.settings.seperateFillTypeLoading,'changeByX', 3, 1, 1 )
+	self:addSettingsRowWithArrows(vehicle,vehicle.cp.settings.driveOnAtFillLevel,'changeByX', 3, 1, 1 )
+	self:addSettingsRowWithArrows(vehicle,vehicle.cp.settings.seperateFillTypeLoading,'changeByX', 3, 1, 3)
 	self:addRowButton(vehicle,vehicle.cp.settings.siloSelectedFillTypeGrainTransportDriver,'addFilltype', 3, 2, 1 )
 	self:setupSiloSelectedFillTypeList(vehicle,vehicle.cp.settings.siloSelectedFillTypeGrainTransportDriver, 3, 3, 7, 1,true)
 	--page 7 
