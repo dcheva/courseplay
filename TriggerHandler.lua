@@ -541,6 +541,9 @@ function TriggerHandler:onActivateObject(superFunc,vehicle)
 								if triggerHandler:canLoadFillType(fillableObject,fillUnitIndex,data.maxFillLevel) then 
 									if triggerHandler:isAllowedToLoadSeperateFillType(fillTypeIndex) then
 										if self.hasInfiniteCapacity or self.autoStart or triggerHandler:isMinFillLevelReached(fillableObject,fillUnitIndex,fillLevel,data.minFillLevel) then 
+											if self.hasInfiniteCapacity or self.autoStart then 
+												courseplay.debugFormat(2, 'autoStart or hasInfiniteCapacity!')
+											end
 											if triggerHandler:isRunCounterValid(data.runCounter) then 
 												--waiting for cover to be open
 												if fillableObject.spec_cover and fillableObject.spec_cover.isDirty then 

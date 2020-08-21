@@ -24,8 +24,7 @@ function GrainTransportAIDriver:init(vehicle)
 	courseplay.debugVehicle(11,vehicle,'GrainTransportAIDriver:init()')
 	AIDriver.init(self, vehicle)
 	self.mode = courseplay.MODE_GRAIN_TRANSPORT
-	self.waitAtOverloadingPoint = false
-	self.ignoreLoadingTrigger = false
+	self.totalFillCapacity = 0
 	-- just for backwards compatibility
 end
 
@@ -35,7 +34,7 @@ function GrainTransportAIDriver:setHudContent()
 end
 
 function GrainTransportAIDriver:start(startingPoint)
-	self.waitAtOverloadingPoint = false
+	self.readyToLoadManualAtStart = false
 	self.vehicle:setCruiseControlMaxSpeed(self.vehicle:getSpeedLimit() or math.huge)
 	AIDriver.start(self, startingPoint)
 	self:setDriveUnloadNow(false);
@@ -67,13 +66,21 @@ function GrainTransportAIDriver:drive(dt)
 	local allowedToDrive = true
 	if self:getSiloSelectedFillTypeSetting():isEmpty() then 
 		courseplay:setInfoText(self.vehicle, "COURSEPLAY_MANUAL_LOADING")
-		self.ignoreLoadingTrigger = true
+		--checking FillLevels, while loading at StartPoint 
+		if self.readyToLoadManualAtStart then 
+			self:setInfoText('REACHED_OVERLOADING_POINT')
+			self:checkFillUnits()
+			self:hold()
+		else
+			self:clearInfoText('REACHED_OVERLOADING_POINT')
+		end	
 	end
 
 	if self:isNearFillPoint() then
 		if not self:getSiloSelectedFillTypeSetting():isEmpty() then
 			self.triggerHandler:enableFillTypeLoading()
-			
+		else 
+			self.triggerHandler:disableFillTypeLoading()
 		end
 		self.triggerHandler:disableFillTypeUnloading()
 	else 
@@ -95,20 +102,6 @@ function GrainTransportAIDriver:drive(dt)
 	if not allowedToDrive then
 		self:hold()
 	end
-	--checking FillLevels, while loading at StartPoint 
-	if self.waitAtOverloadingPoint then 
-		if self.triggerHandler:isInTrigger() then 
-			self.waitAtOverloadingPoint = false
-		end
-		
-		courseplay:setInfoText(self.vehicle, "COURSEPLAY_MANUAL_LOADING")
-		self:setInfoText('REACHED_OVERLOADING_POINT')
-		self:checkFillUnits()
-		self:continue()
-		self:hold()
-	else
-		self:clearInfoText('REACHED_OVERLOADING_POINT')
-	end	
 	
 	if giveUpControl then
 		self.ppc:update()
@@ -123,25 +116,38 @@ end
 function GrainTransportAIDriver:onWaypointPassed(ix)
 	--firstWaypoint/ start, check if we are in a LoadTrigger or FillTrigger else loading at StartPoint
 	if ix == 1 then 
-		if not self.triggerHandler:isInTrigger() then 
-			self.waitAtOverloadingPoint = true
+		if self:getSiloSelectedFillTypeSetting():isEmpty() then 
 			local totalFillUnitsData = {}
 			self.totalFillCapacity = 0
-			self.totalFillLevel = 0
+			local totalFillLevel = 0
 			self:getFillUnitInfo(self.vehicle,totalFillUnitsData)
 			for object, objectData in pairs(totalFillUnitsData) do 
 				for fillUnitIndex, fillUnitData in pairs(objectData) do 
-					SpecializationUtil.raiseEvent(object, "onAddedFillUnitTrigger",fillUnitData.fillType,fillUnitIndex,1)
 					self.totalFillCapacity = self.totalFillCapacity + fillUnitData.capacity
-					self.totalFillLevel = self.totalFillLevel + fillUnitData.fillLevel
+					totalFillLevel = totalFillLevel + fillUnitData.fillLevel
 				end
 			end
-			return
+			if not self:isFillLevelReached(totalFillLevel) then 
+				self.readyToLoadManualAtStart = true
+				for object, objectData in pairs(totalFillUnitsData) do 
+					for fillUnitIndex, fillUnitData in pairs(objectData) do 
+						SpecializationUtil.raiseEvent(object, "onAddedFillUnitTrigger",fillUnitData.fillType,fillUnitIndex,1)
+					end
+				end
+			end
 		end
 	end
-	if not self.waitAtOverloadingPoint then 
-		AIDriver.onWaypointPassed(self,ix)
+	AIDriver.onWaypointPassed(self,ix)
+end
+
+function GrainTransportAIDriver:isFillLevelReached(totalFillLevel)
+	if totalFillLevel/self.totalFillCapacity*100 >= self:getMaxFillLevel() then 
+		return true
 	end
+end
+
+function GrainTransportAIDriver:getMaxFillLevel()
+	return self.vehicle.cp.settings.driveOnAtFillLevel:get() or 99
 end
 
 function GrainTransportAIDriver:updateLights()
@@ -158,52 +164,17 @@ end
 
 --manuel loading at StartPoint
 function GrainTransportAIDriver:checkFillUnits()
-	local totalFillTypeData = {}
-	local fillLevelOkay = true
-	local totalFillCapacity = 0
-	local totalFillLevel = 0
-	self:getFillTypeInfo(self.vehicle,totalFillTypeData)
 	local maxNeeded = self.vehicle.cp.settings.driveOnAtFillLevel:get()
-	local fillTypeTotalData,fillTypeDataSize = self.triggerHandler:getSiloSelectedFillTypeData()
-	for fillTypeIndex,data in pairs(totalFillTypeData) do 
-	--	print(string.format("fillTypeIndex: %s, fillLevelPercentage: %s, capacity: %s, fillLevel: %s",tostring(fillTypeIndex),tostring(data.fillLevelPercentage),tostring(data.capacity),tostring(data.fillLevel)))
-		totalFillCapacity = totalFillCapacity+data.capacity
-		totalFillLevel = totalFillLevel + data.fillLevel
-		if self:getSeperateFillTypeLoadingSetting():isActive() and fillTypeDataSize>0 then
-			local fillTypeMaxFound 
-			for _,fillTypeData in ipairs(fillTypeTotalData) do 
-				if fillTypeIndex == fillTypeData.fillType then 
-					if data.fillLevelPercentage< fillTypeData.maxFillLevel then 
-						fillLevelOkay = false
-						break
-					end
-					fillTypeMaxFound =fillTypeData.maxFillLevel
-				end
-			end 
-		--	print(string.format("fillLevelPercentage: %s, maxFillLevelFound: %s, maxNeeded: %s",tostring(data.fillLevelPercentage),tostring(fillTypeMaxFound~=nil),tostring(fillTypeMaxFound or 99)))
-			if not fillTypeMaxFound then 
-				if data.fillLevelPercentage<99 then 
-					fillLevelOkay = false
-				end
-			end
-			if not fillLevelOkay then 
-				break
-			end
+	local totalFillUnitsData = {}
+	local totalFillLevel = 0
+	self:getFillUnitInfo(self.vehicle,totalFillUnitsData)
+	for object, objectData in pairs(totalFillUnitsData) do 
+		for fillUnitIndex, fillUnitData in pairs(objectData) do 
+			totalFillLevel = totalFillLevel + fillUnitData.fillLevel
 		end
 	end
-	if not self:getSeperateFillTypeLoadingSetting():isActive() then
-	--	print(string.format("totalFillCapacity: %s, totalFillLevel: %s, maxNeeded: %s, diff: %s",tostring(self.totalFillCapacity),tostring(self.totalFillLevel),tostring(maxNeeded),tostring(self.totalFillLevel/self.totalFillCapacity*100)))
-		if (self.totalFillLevel/self.totalFillCapacity)*100 < maxNeeded then 
-			fillLevelOkay = false
-		end
-	else 
-		if totalFillCapacity ~= self.totalFillCapacity then 
-			fillLevelOkay = false
-		end
-	end
-
-	if fillLevelOkay then 
-		self.waitAtOverloadingPoint = false
+	if self:isFillLevelReached(totalFillLevel) then 
+		self.readyToLoadManualAtStart = false
 		local totalFillUnitsData = {}
 		self:getFillUnitInfo(self.vehicle,totalFillUnitsData)
 		for object, objectData in pairs(totalFillUnitsData) do 
@@ -218,11 +189,9 @@ function GrainTransportAIDriver:getFillUnitInfo(object,totalFillUnitsData)
 		totalFillUnitsData[object] = {}
 		for fillUnitIndex,fillUnit in pairs(object:getFillUnits()) do 
 			totalFillUnitsData[object][fillUnitIndex] = {}
-			local fillLevelPercentage = object:getFillUnitFillLevelPercentage(fillUnitIndex)*100
 			local capacity = object:getFillUnitCapacity(fillUnitIndex)
 			local fillLevel = object:getFillUnitFillLevel(fillUnitIndex)
 			local fillType = object:getFillUnitFillType(fillUnitIndex)
-			totalFillUnitsData[object][fillUnitIndex].fillLevelPercentage = fillPercentage
 			totalFillUnitsData[object][fillUnitIndex].capacity = capacity
 			totalFillUnitsData[object][fillUnitIndex].fillLevel = fillLevel
 			totalFillUnitsData[object][fillUnitIndex].fillType = fillType
@@ -234,30 +203,30 @@ function GrainTransportAIDriver:getFillUnitInfo(object,totalFillUnitsData)
 	end
 end
 
-function GrainTransportAIDriver:getFillTypeInfo(object,totalFillTypeData)
-	local spec = object.spec_fillUnit
-	if spec and object.spec_trailer then 
-		for fillUnitIndex,fillUnit in pairs(object:getFillUnits()) do 
-			local fillLevelPercentage = object:getFillUnitFillLevelPercentage(fillUnitIndex)*100
-			local capacity = object:getFillUnitCapacity(fillUnitIndex)
-			local fillLevel = object:getFillUnitFillLevel(fillUnitIndex)
-			local fillType = object:getFillUnitFillType(fillUnitIndex)
-			if fillType then
-				if totalFillTypeData[fillType] == nil then 
-					totalFillTypeData[fillType] = {}
-					totalFillTypeData[fillType].capacity = capacity
-					totalFillTypeData[fillType].fillLevel = fillLevel
-					totalFillTypeData[fillType].fillLevelPercentage = fillLevelPercentage
-				else
-					totalFillTypeData[fillType].capacity = totalFillTypeData[fillType].capacity +capacity
-					totalFillTypeData[fillType].fillLevel = totalFillTypeData[fillType].fillLevel + fillLevel
-					totalFillTypeData[fillType].fillLevelPercentage = totalFillTypeData[fillType].fillLevel/totalFillTypeData[fillType].capacity*100
-				end
-			end
-		end
-	end
-	-- get all attached implements recursively
-	for _,impl in pairs(object:getAttachedImplements()) do
-		self:getFillTypeInfo(impl.object,totalFillTypeData)
-	end
-end
+-- function GrainTransportAIDriver:getFillTypeInfo(object,totalFillTypeData)
+	-- local spec = object.spec_fillUnit
+	-- if spec and object.spec_trailer then 
+		-- for fillUnitIndex,fillUnit in pairs(object:getFillUnits()) do 
+			-- local fillLevelPercentage = object:getFillUnitFillLevelPercentage(fillUnitIndex)*100
+			-- local capacity = object:getFillUnitCapacity(fillUnitIndex)
+			-- local fillLevel = object:getFillUnitFillLevel(fillUnitIndex)
+			-- local fillType = object:getFillUnitFillType(fillUnitIndex)
+			-- if fillType then
+				-- if totalFillTypeData[fillType] == nil then 
+					-- totalFillTypeData[fillType] = {}
+					-- totalFillTypeData[fillType].capacity = capacity
+					-- totalFillTypeData[fillType].fillLevel = fillLevel
+					-- totalFillTypeData[fillType].fillLevelPercentage = fillLevelPercentage
+				-- else
+					-- totalFillTypeData[fillType].capacity = totalFillTypeData[fillType].capacity +capacity
+					-- totalFillTypeData[fillType].fillLevel = totalFillTypeData[fillType].fillLevel + fillLevel
+					-- totalFillTypeData[fillType].fillLevelPercentage = totalFillTypeData[fillType].fillLevel/totalFillTypeData[fillType].capacity*100
+				-- end
+			-- end
+		-- end
+	-- end
+	-- -- get all attached implements recursively
+	-- for _,impl in pairs(object:getAttachedImplements()) do
+		-- self:getFillTypeInfo(impl.object,totalFillTypeData)
+	-- end
+-- end
