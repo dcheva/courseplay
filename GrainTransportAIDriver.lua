@@ -63,18 +63,13 @@ function GrainTransportAIDriver:drive(dt)
 	-- should we give up control so some other code can drive?
 	local giveUpControl = false
 	-- should we keep driving?
---	local allowedToDrive = self:checkLastWaypoint()
+
 	local allowedToDrive = true
 	if self:getSiloSelectedFillTypeSetting():isEmpty() then 
 		courseplay:setInfoText(self.vehicle, "COURSEPLAY_MANUAL_LOADING")
 		self.ignoreLoadingTrigger = true
 	end
---		allowedToDrive = false
---		self:setInfoText('NO_SELECTED_FILLTYPE')
---		self.ignoreLoadingTrigger = true
---	else
---		self:clearInfoText('NO_SELECTED_FILLTYPE')
-		
+
 	if self:isNearFillPoint() then
 		if not self:getSiloSelectedFillTypeSetting():isEmpty() then
 			self.triggerHandler:enableFillTypeLoading()
@@ -95,14 +90,17 @@ function GrainTransportAIDriver:drive(dt)
 	else
 		self:debug('Safety check failed')
 	end
---	end
-	
+
 	-- TODO: clean up the self.allowedToDrives above and use a local copy
 	if not allowedToDrive then
 		self:hold()
 	end
-	
+	--checking FillLevels, while loading at StartPoint 
 	if self.waitAtOverloadingPoint then 
+		if self.triggerHandler:isInTrigger() then 
+			self.waitAtOverloadingPoint = false
+		end
+		
 		courseplay:setInfoText(self.vehicle, "COURSEPLAY_MANUAL_LOADING")
 		self:setInfoText('REACHED_OVERLOADING_POINT')
 		self:checkFillUnits()
@@ -111,22 +109,19 @@ function GrainTransportAIDriver:drive(dt)
 	else
 		self:clearInfoText('REACHED_OVERLOADING_POINT')
 	end	
-
 	
 	if giveUpControl then
 		self.ppc:update()
 		-- unload_tippers does the driving
 		return
 	else
-		-- collision detection
-	--	self:detectCollision(dt)
 		-- we drive the course as usual
 		AIDriver.drive(self,dt)
 	end
 end
 
 function GrainTransportAIDriver:onWaypointPassed(ix)
-	--firstWaypoint/ start
+	--firstWaypoint/ start, check if we are in a LoadTrigger or FillTrigger else loading at StartPoint
 	if ix == 1 then 
 		if not self.triggerHandler:isInTrigger() then 
 			self.waitAtOverloadingPoint = true
@@ -149,31 +144,6 @@ function GrainTransportAIDriver:onWaypointPassed(ix)
 	end
 end
 
--- --this one is probably broken ??
--- -- TODO: move this into onWaypointPassed() instead
--- function GrainTransportAIDriver:checkLastWaypoint()
-	-- local allowedToDrive = true
-	-- if self.ppc:getCurrentWaypointIx() == self.course:getNumberOfWaypoints() then
-		-- if self:getSiloSelectedFillTypeSetting():isEmpty() then 
-			-- courseplay:openCloseCover(self.vehicle, not courseplay.SHOW_COVERS)
-			-- if self:areFillUnitsNotFull() then 
-				-- return
-			-- end
-		-- end
-	-- --	if not self:getSiloSelectedFillTypeSetting():isActive() then
-			-- -- stop at the last waypoint when the run counter expires
-	-- --		allowedToDrive = false
-	-- --		self:stop('END_POINT_MODE_1')
-	-- --		self:debug('Last run (%d) finished, stopping.', self.runCounter)
-	-- --	else
-			-- -- continue at the first waypoint
-			-- self.ppc:initialize(1)
-			-- self:debug('Finished run , continue with next.')
-	-- --	end
-	-- end
-	-- return allowedToDrive
--- end
-
 function GrainTransportAIDriver:updateLights()
 	self.vehicle:setBeaconLightsVisibility(false)
 end
@@ -186,6 +156,7 @@ function GrainTransportAIDriver:getSeperateFillTypeLoadingSetting()
 	return self.vehicle.cp.settings.seperateFillTypeLoading
 end
 
+--manuel loading at StartPoint
 function GrainTransportAIDriver:checkFillUnits()
 	local totalFillTypeData = {}
 	local fillLevelOkay = true
@@ -209,7 +180,7 @@ function GrainTransportAIDriver:checkFillUnits()
 					fillTypeMaxFound =fillTypeData.maxFillLevel
 				end
 			end 
-			print(string.format("fillLevelPercentage: %s, maxFillLevelFound: %s, maxNeeded: %s",tostring(data.fillLevelPercentage),tostring(fillTypeMaxFound~=nil),tostring(fillTypeMaxFound or 99)))
+		--	print(string.format("fillLevelPercentage: %s, maxFillLevelFound: %s, maxNeeded: %s",tostring(data.fillLevelPercentage),tostring(fillTypeMaxFound~=nil),tostring(fillTypeMaxFound or 99)))
 			if not fillTypeMaxFound then 
 				if data.fillLevelPercentage<99 then 
 					fillLevelOkay = false
@@ -221,7 +192,7 @@ function GrainTransportAIDriver:checkFillUnits()
 		end
 	end
 	if not self:getSeperateFillTypeLoadingSetting():isActive() then
-		print(string.format("totalFillCapacity: %s, totalFillLevel: %s, maxNeeded: %s, diff: %s",tostring(self.totalFillCapacity),tostring(self.totalFillLevel),tostring(maxNeeded),tostring(self.totalFillLevel/self.totalFillCapacity*100)))
+	--	print(string.format("totalFillCapacity: %s, totalFillLevel: %s, maxNeeded: %s, diff: %s",tostring(self.totalFillCapacity),tostring(self.totalFillLevel),tostring(maxNeeded),tostring(self.totalFillLevel/self.totalFillCapacity*100)))
 		if (self.totalFillLevel/self.totalFillCapacity)*100 < maxNeeded then 
 			fillLevelOkay = false
 		end
