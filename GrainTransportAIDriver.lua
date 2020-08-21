@@ -63,13 +63,17 @@ function GrainTransportAIDriver:drive(dt)
 	local allowedToDrive = self:checkLastWaypoint()
 	
 	if self:getSiloSelectedFillTypeSetting():isEmpty() then 
-		allowedToDrive = false
-		self:setInfoText('NO_SELECTED_FILLTYPE')
-	else
-		self:clearInfoText('NO_SELECTED_FILLTYPE')
+		courseplay:setInfoText(self.vehicle, "COURSEPLAY_MANUAL_LOADING")
+	end
+--		allowedToDrive = false
+--		self:setInfoText('NO_SELECTED_FILLTYPE')
+--	else
+--		self:clearInfoText('NO_SELECTED_FILLTYPE')
 		
 		if self:isNearFillPoint() then
-			self.triggerHandler:enableFillTypeLoading()
+			if not self:getSiloSelectedFillTypeSetting():isEmpty() then 
+				self.triggerHandler:enableFillTypeLoading()
+			end
 			self.triggerHandler:disableFillTypeUnloading()
 		else 
 			self.triggerHandler:enableFillTypeUnloading()
@@ -85,7 +89,7 @@ function GrainTransportAIDriver:drive(dt)
 		else
 			self:debug('Safety check failed')
 		end
-	end
+--	end
 	
 	-- TODO: clean up the self.allowedToDrives above and use a local copy
 	if self.state == self.states.STOPPED or not allowedToDrive or self.triggerHandler:isLoading() or self.triggerHandler:isUnloading() then
@@ -104,32 +108,27 @@ function GrainTransportAIDriver:drive(dt)
 	end
 end
 
---can be removed maybe ??
-function GrainTransportAIDriver:onWaypointChange(newIx)
-	self:debug('On waypoint change %d', newIx)
-	AIDriver.onWaypointChange(self, newIx)
-	if self.course:isLastWaypointIx(newIx) then
-		self:debug('Reaching last waypoint')
-		self:setDriveUnloadNow(false);
-	end
-end
-
 --this one is probably broken ??
 -- TODO: move this into onWaypointPassed() instead
 function GrainTransportAIDriver:checkLastWaypoint()
 	local allowedToDrive = true
 	if self.ppc:getCurrentWaypointIx() == self.course:getNumberOfWaypoints() then
-	--	courseplay:openCloseCover(self.vehicle, not courseplay.SHOW_COVERS)
-		if not self:getSiloSelectedFillTypeSetting():isActive() then
+		if self:getSiloSelectedFillTypeSetting():isEmpty() then 
+			courseplay:openCloseCover(self.vehicle, not courseplay.SHOW_COVERS)
+			if self:areFillUnitsNotFull() then 
+				return
+			end
+		end
+	--	if not self:getSiloSelectedFillTypeSetting():isActive() then
 			-- stop at the last waypoint when the run counter expires
-			allowedToDrive = false
-			self:stop('END_POINT_MODE_1')
-			self:debug('Last run (%d) finished, stopping.', self.runCounter)
-		else
+	--		allowedToDrive = false
+	--		self:stop('END_POINT_MODE_1')
+	--		self:debug('Last run (%d) finished, stopping.', self.runCounter)
+	--	else
 			-- continue at the first waypoint
 			self.ppc:initialize(1)
 			self:debug('Finished run %d, continue with next.', self.runCounter)
-		end
+	--	end
 	end
 	return allowedToDrive
 end
@@ -138,15 +137,42 @@ function GrainTransportAIDriver:updateLights()
 	self.vehicle:setBeaconLightsVisibility(false)
 end
 
---function GrainTransportAIDriver:getCanShowDriveOnButton()
---	return self:isNearFillPoint()
---end
-
 function GrainTransportAIDriver:getSiloSelectedFillTypeSetting()
 	return self.vehicle.cp.settings.siloSelectedFillTypeGrainTransportDriver
 end
 
 function GrainTransportAIDriver:getSeperateFillTypeLoadingSetting()
 	return self.vehicle.cp.settings.seperateFillTypeLoading
+end
+
+function GrainTransportAIDriver:areFillUnitsNotFull()
+	local totalFillUnitsData = {}
+	self:getFillUnitInfo(self.vehicle,totalFillUnitsData)
+	for object, objectData in pairs(totalFillUnitsData) do 
+		for fillUnitIndex, fillUnitData in pairs(objectData) do 
+			if fillUnitData.fillLevelPercentage*100 < 99 then 
+				print("fillLevelPercentage: "..fillUnitData.fillLevelPercentage)
+				return true
+			end
+		end
+	end 
+end
+
+
+function GrainTransportAIDriver:getFillUnitInfo(object,totalFillUnitsData)
+	local spec = object.spec_fillUnit
+	if spec and object.spec_trailer then 
+		for fillUnitIndex,fillUnit in pairs(object:getFillUnits()) do 
+			totalFillUnitsData[object] = {}
+			totalFillUnitsData[object][fillUnitIndex] = {}
+			totalFillUnitsData[object][fillUnitIndex].fillLevelPercentage = object:getFillUnitFillLevelPercentage(fillUnitIndex)
+			totalFillUnitsData[object][fillUnitIndex].capacity = object:getFillUnitCapacity(fillUnitIndex)
+			totalFillUnitsData[object][fillUnitIndex].fillLevel = object:getFillUnitFillLevel(fillUnitIndex)
+		end
+	end
+	-- get all attached implements recursively
+	for _,impl in pairs(object:getAttachedImplements()) do
+		self:getFillUnitInfo(impl.object,totalFillUnitsData)
+	end
 end
 

@@ -13,7 +13,7 @@ function SettingsListEvent:emptyNew()
 end
 
 function SettingsListEvent:new(vehicle,parentName, name, value)
-	courseplay:debug(string.format("courseplay:SettingsListEvent:new(%s, %s, %s)", tostring(name),tostring(parentName),, tostring(value)), 5)
+	courseplay:debug(string.format("courseplay:SettingsListEvent:new(%s, %s, %s)", tostring(name),tostring(parentName), tostring(value)), 5)
 	self.vehicle = vehicle;
 	self.parentName = parentName
 	self.messageNumber = Utils.getNoNil(self.messageNumber, 0) + 1
