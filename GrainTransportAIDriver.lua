@@ -35,6 +35,7 @@ function GrainTransportAIDriver:setHudContent()
 end
 
 function GrainTransportAIDriver:start(startingPoint)
+	self.waitAtOverloadingPoint = false
 	self.vehicle:setCruiseControlMaxSpeed(self.vehicle:getSpeedLimit() or math.huge)
 	AIDriver.start(self, startingPoint)
 	self:setDriveUnloadNow(false);
